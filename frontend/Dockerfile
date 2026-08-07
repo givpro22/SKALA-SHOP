@@ -21,5 +21,8 @@ FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
+# localhost 가 아니라 127.0.0.1 을 쓴다. 컨테이너 안에서 localhost 는 [::1](IPv6)로 먼저 풀리는데
+# nginx 기본 설정은 0.0.0.0:80(IPv4)만 듣기 때문에 wget 이 connection refused 로 실패한다.
+# 사이트는 정상인데 컨테이너만 unhealthy 로 남는 상태가 되어 원인을 찾기 어렵다(실제로 겪었다).
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
-  CMD wget -qO- http://localhost/ > /dev/null 2>&1 || exit 1
+  CMD wget -qO- http://127.0.0.1/ > /dev/null 2>&1 || exit 1

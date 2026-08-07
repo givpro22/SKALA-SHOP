@@ -3,5 +3,9 @@ dist/
 .git/
 *.log
 .DS_Store
+
+# .env* 는 전부 제외한다. 이미지 빌드 시 API base URL 은 compose 가 넘기는
+# build arg(VITE_API_BASE_URL)로만 정해져야 한다. 개발용 .env.development 에는
+# 로컬 포트(18080)가 들어 있어, 빌드 모드가 바뀌면 그 값이 번들에 섞일 수 있다.
 .env
-.env.local
+.env.*
