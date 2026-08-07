@@ -130,16 +130,26 @@ export function ProductsPage() {
                       key={product.productId}
                       className={detailId === product.productId ? 'is-selected' : undefined}
                     >
-                      <td>{product.productId}</td>
-                      <td className="strong">{product.name}</td>
-                      <td className="muted">{product.description ?? '—'}</td>
-                      <td className="num">{formatKrw(product.price)}</td>
-                      <td className="num">
+                      {/* data-label 은 560px 미만에서 컬럼 헤드를 대신한다. thead 가 사라지고
+                          각 값 앞에 mono 캡션으로 다시 나타난다. */}
+                      <td data-label="id">{product.productId}</td>
+                      <td className="strong" data-label="상품명">
+                        {product.name}
+                      </td>
+                      <td className="muted" data-label="설명">
+                        {product.description ?? '—'}
+                      </td>
+                      <td className="num" data-label="단가">
+                        {formatKrw(product.price)}
+                      </td>
+                      <td className="num" data-label="재고">
                         <span className={product.stock <= 2 ? 'badge badge--warn' : undefined}>
                           {product.stock}
                         </span>
                       </td>
-                      <td className="muted">{formatDateTime(product.updatedAt)}</td>
+                      <td className="muted" data-label="수정 시각">
+                        {formatDateTime(product.updatedAt)}
+                      </td>
                       <td className="actions">
                         <button
                           type="button"

@@ -142,13 +142,20 @@ export function CustomersPage() {
                       key={customer.customerId}
                       className={detailId === customer.customerId ? 'is-selected' : undefined}
                     >
-                      <td>{customer.customerId}</td>
-                      <td className="strong">{customer.name}</td>
-                      <td className="muted">{customer.email}</td>
-                      <td className="num">
+                      {/* data-label 은 560px 미만에서 컬럼 헤드를 대신한다 */}
+                      <td data-label="id">{customer.customerId}</td>
+                      <td className="strong" data-label="이름">
+                        {customer.name}
+                      </td>
+                      <td className="muted" data-label="이메일">
+                        {customer.email}
+                      </td>
+                      <td className="num" data-label="보유 포인트">
                         <span className="badge badge--point">{formatKrw(customer.point)}</span>
                       </td>
-                      <td className="muted">{formatDateTime(customer.createdAt)}</td>
+                      <td className="muted" data-label="등록 시각">
+                        {formatDateTime(customer.createdAt)}
+                      </td>
                       <td className="actions">
                         <button
                           type="button"

@@ -1,8 +1,233 @@
 /**
  * 브레이크포인트.
  *
- * 대부분의 반응은 tokens.css 가 값으로 흡수한다(거터·디스플레이 크기·블록 패딩).
- * 여기 남는 것은 **배치가 달라지는 것들**뿐이다.
+ * 대부분의 반응은 tokens.css 가 값으로 흡수하고(거터·디스플레이 크기·블록 패딩),
+ * 2단 → 1단 전환은 layout.css 가 맡는다. 여기 남는 것은 **배치가 달라지는 것들**이다.
+ *
+ * 모바일은 데스크톱을 줄인 결과가 아니다. 특히 560px 미만의 테이블 → 카드 전환은
+ * 축소가 아니라 다른 레이아웃이다.
  */
 
-/* 자리표시자 — 실제 규칙은 다음 단계에서 채운다 */
+/* ==================================================================== */
+/* 960px 미만 — 상단 네비가 두 줄로                                       */
+/* ==================================================================== */
+
+@media (max-width: 959px) {
+  /*
+   * 브랜드 + API 표시가 첫 줄, 탭이 둘째 줄. 햄버거를 만들지 않는다 —
+   * 탭이 셋뿐이라 숨길 이유가 없고, 숨기면 현재 위치가 안 보인다.
+   */
+  .app__head {
+    flex-wrap: wrap;
+    gap: var(--space-sm) var(--space-md);
+    padding-bottom: var(--space-md);
+  }
+
+  .tabs {
+    order: 3;
+    flex: 1 0 100%;
+  }
+}
+
+/* ==================================================================== */
+/* 768px 미만 — 컬러블록 풀블리드                                         */
+/* ==================================================================== */
+
+/*
+ * tokens.css 가 이 폭에서 --radius-block 을 0 으로, --space-block 을 24px 로 낮춘다.
+ * 남은 일은 블록을 거터 밖으로 밀어내는 것뿐이다. 중첩된 블록은 .block .block 규칙이
+ * --bleed 를 상쇄하므로 여기서 따로 다루지 않는다.
+ */
+@media (max-width: 767px) {
+  :root {
+    --bleed: var(--gutter);
+  }
+
+  /* 상단 여백이 96px 이면 첫 화면이 거의 비어 보인다 */
+  .app__body {
+    padding-top: var(--space-xxl);
+  }
+}
+
+/* ==================================================================== */
+/* 560px 미만 — 데이터 테이블이 카드가 된다                               */
+/* ==================================================================== */
+
+/*
+ * **이게 모바일에서 가장 중요한 결정이다.**
+ *
+ * 상품 7열·주문 8열 테이블은 좁은 화면에서 가로로 넘친다. `overflow-x: auto` 로
+ * 넘기는 것은 해결이 아니다 — 가로 스크롤 테이블은 손가락으로 쓸 수 없고,
+ * 화면 밖의 열은 없는 것과 같다.
+ *
+ * 그래서 행을 카드로 바꾼다. 컬럼 헤드(thead)는 사라지고, 각 값 앞의
+ * mono 캡션 라벨(`data-label`)로 다시 나타난다. 데이터는 하나도 버리지 않는다.
+ */
+@media (max-width: 559px) {
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tr {
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-md);
+  }
+
+  .table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .table td,
+  .table tbody tr:last-child td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-xxs) 0;
+    border-bottom: none;
+    text-align: right;
+  }
+
+  /* 컬럼 헤드가 값 앞의 라벨로 자리를 옮긴다 */
+  .table td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    letter-spacing: var(--ls-caption);
+    text-transform: uppercase;
+  }
+
+  .table td:not([data-label])::before {
+    content: none;
+  }
+
+  /* 이름은 카드의 제목이다. 라벨 없이 크게 */
+  .table td.strong {
+    margin-bottom: var(--space-xs);
+    font-size: var(--fs-body-lg);
+    line-height: var(--lh-body-lg);
+  }
+
+  /* 조작 버튼은 카드 하단에 전폭 pill 로 — 탭 타겟 44px 이상 */
+  .table td.actions {
+    margin-top: var(--space-sm);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-hairline-soft);
+  }
+
+  .table td.actions::before {
+    content: none;
+  }
+
+  .table td.actions .btn {
+    flex: 1 1 40%;
+    min-height: var(--tap-min);
+  }
+
+  /*
+   * 상세·재고처럼 짧은 표는 카드 테두리 없이 구분선만 둔다. 세 줄짜리 표를
+   * 카드로 감싸면 목록이 아니라 카드 더미가 된다.
+   */
+  .table--compact tr {
+    border: none;
+    border-bottom: 1px solid var(--color-hairline-soft);
+    border-radius: 0;
+    padding: var(--space-sm) 0;
+    margin-bottom: 0;
+  }
+
+  .table--compact tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  /* ---------------------------------------------------------- 폼·버튼 */
+
+  /* 필 버튼 전폭 */
+  .form__actions {
+    flex-direction: column;
+  }
+
+  .form__actions .btn,
+  .page__head .btn {
+    width: 100%;
+  }
+
+  .page__head {
+    align-items: stretch;
+  }
+
+  /* 목록 안 작은 버튼도 터치 뷰포트에서는 손가락 크기여야 한다 */
+  .btn--sm {
+    min-height: var(--tap-min);
+  }
+
+  /* 주문 항목 줄은 가로로 성립하지 않는다. 줄마다 카드로 분리한다 */
+  .lines {
+    padding: var(--space-sm);
+  }
+
+  .line {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-sm);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-md);
+  }
+
+  .line select,
+  .line__qty {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .line__subtotal {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .card__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inline-field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-xxs);
+  }
+
+  /* 상세 정의 목록도 라벨 → 값 세로 배치로 */
+  .detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-xxs);
+  }
+
+  .detail dd {
+    margin-bottom: var(--space-xs);
+  }
+
+  /* 서버 원문 메시지가 잘리지 않도록 */
+  .banner__message,
+  .banner__hint,
+  .banner p {
+    max-width: none;
+  }
+
+  .banner__actions .btn {
+    width: 100%;
+  }
+}

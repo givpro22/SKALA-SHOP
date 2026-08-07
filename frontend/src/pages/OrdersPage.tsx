@@ -350,15 +350,20 @@ export function OrdersPage() {
                         key={order.orderId}
                         className={detailId === order.orderId ? 'is-selected' : undefined}
                       >
-                        <td>#{order.orderId}</td>
-                        <td className="strong">{order.customerName}</td>
-                        <td className="muted">
+                        {/* data-label 은 560px 미만에서 컬럼 헤드를 대신한다 */}
+                        <td data-label="주문번호">#{order.orderId}</td>
+                        <td className="strong" data-label="고객">
+                          {order.customerName}
+                        </td>
+                        <td className="muted" data-label="항목">
                           {order.items
                             .map((item) => `${item.productName} × ${item.quantity}`)
                             .join(', ')}
                         </td>
-                        <td className="num">{formatKrw(order.totalPrice)}</td>
-                        <td>
+                        <td className="num" data-label="총액">
+                          {formatKrw(order.totalPrice)}
+                        </td>
+                        <td data-label="상태">
                           <span
                             className={
                               order.status === 'ORDERED'
@@ -369,8 +374,10 @@ export function OrdersPage() {
                             {order.status}
                           </span>
                         </td>
-                        <td className="muted">{formatDateTime(order.orderedAt)}</td>
-                        <td className="muted">
+                        <td className="muted" data-label="주문 시각">
+                          {formatDateTime(order.orderedAt)}
+                        </td>
+                        <td className="muted" data-label="취소 시각">
                           {order.canceledAt === null ? '—' : formatDateTime(order.canceledAt)}
                         </td>
                         <td className="actions">
@@ -459,10 +466,16 @@ export function OrdersPage() {
                         <tbody>
                           {order.items.map((item) => (
                             <tr key={item.orderItemId}>
-                              <td>{item.productName}</td>
-                              <td className="num">{item.quantity}</td>
-                              <td className="num">{formatKrw(item.orderPrice)}</td>
-                              <td className="num">{formatKrw(item.subtotal)}</td>
+                              <td data-label="상품">{item.productName}</td>
+                              <td className="num" data-label="수량">
+                                {item.quantity}
+                              </td>
+                              <td className="num" data-label="주문 시점 단가">
+                                {formatKrw(item.orderPrice)}
+                              </td>
+                              <td className="num" data-label="소계">
+                                {formatKrw(item.subtotal)}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -494,9 +507,11 @@ export function OrdersPage() {
                   <tbody>
                     {list.map((product) => (
                       <tr key={product.productId}>
-                        <td>{product.name}</td>
-                        <td className="num">{formatKrw(product.price)}</td>
-                        <td className="num">
+                        <td data-label="상품">{product.name}</td>
+                        <td className="num" data-label="단가">
+                          {formatKrw(product.price)}
+                        </td>
+                        <td className="num" data-label="재고">
                           <span className={product.stock <= 2 ? 'badge badge--warn' : undefined}>
                             {product.stock}
                           </span>
