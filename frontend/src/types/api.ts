@@ -24,6 +24,8 @@ export interface ProductResponse {
   description: string | null;
   price: number;
   stock: number;
+  /** 상품 이미지 주소. 없으면 null 이고 화면은 대체 표시로 떨어진다. */
+  imageUrl: string | null;
   createdAt: string; // ISO-8601 "yyyy-MM-ddTHH:mm:ss"
   updatedAt: string;
 }
@@ -66,6 +68,7 @@ export interface ProductCreateRequest {
   description?: string | null;
   price: number;
   stock: number;
+  imageUrl?: string | null;
 }
 
 /** PUT 은 전체 교체 시맨틱이다. description 을 빼면 null 로 덮어쓴다. */

@@ -129,7 +129,7 @@
   --space-lg: 24px;
   --space-xl: 32px;
   --space-xxl: 48px;
-  --space-section: 96px;
+  --space-section: 64px;
 
   /* 컬러블록 내부 패딩. 768px 미만에서 절반으로 줄인다 */
   --space-block: 48px;
@@ -186,7 +186,7 @@
     --fs-card-title: 20px;
     --fs-body-lg: 18px;
     --fs-body: 17px;
-    --space-section: 72px;
+    --space-section: 48px;
   }
 }
 

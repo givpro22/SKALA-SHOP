@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" width="240" height="180" role="img" aria-label="keyboard">
+  <rect width="240" height="180" fill="#cdbdf7"/>
+  <g fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="52" y="60" width="136" height="60" rx="8" />
+  <path d="M66 76 h16 M92 76 h16 M118 76 h16 M144 76 h16 M170 76 h4" />
+  <path d="M66 92 h16 M92 92 h16 M118 92 h16 M144 92 h16 M170 92 h4" />
+  <path d="M80 108 h80" />
+  </g>
+</svg>

@@ -4,7 +4,7 @@ import { ErrorBanner } from '../components/ErrorBanner';
 import { useCustomers } from '../hooks/useCustomers';
 import { useCancelOrder, useCreateOrder, useOrder, useOrders } from '../hooks/useOrders';
 import { useProducts } from '../hooks/useProducts';
-import { formatDateTime, formatKrw } from '../lib/format';
+import { formatDateTime, formatDateTimeShort, formatKrw } from '../lib/format';
 import type { OrderItemRequest, OrderResponse, ProductResponse } from '../types/api';
 
 interface OrderLine {
@@ -331,7 +331,7 @@ export function OrdersPage() {
                         <dd className="muted">{formatDateTime(order.orderedAt)}</dd>
                         <dt>취소 시각</dt>
                         <dd className="muted">
-                          {order.canceledAt === null ? '—' : formatDateTime(order.canceledAt)}
+                          {order.canceledAt === null ? '—' : formatDateTimeShort(order.canceledAt)}
                         </dd>
                       </dl>
                       <table className="table table--compact">
@@ -514,10 +514,10 @@ export function OrdersPage() {
                       </span>
                     </td>
                     <td className="muted" data-label="주문 시각">
-                      {formatDateTime(order.orderedAt)}
+                      {formatDateTimeShort(order.orderedAt)}
                     </td>
                     <td className="muted" data-label="취소 시각">
-                      {order.canceledAt === null ? '—' : formatDateTime(order.canceledAt)}
+                      {order.canceledAt === null ? '—' : formatDateTimeShort(order.canceledAt)}
                     </td>
                     <td className="actions">
                       <button

@@ -9,7 +9,7 @@ import {
   useDeleteCustomer,
   useUpdateCustomer,
 } from '../hooks/useCustomers';
-import { formatDateTime, formatKrw } from '../lib/format';
+import { formatDateTime, formatDateTimeShort, formatKrw } from '../lib/format';
 import type { CustomerResponse } from '../types/api';
 
 interface CustomerForm {
@@ -154,7 +154,7 @@ export function CustomersPage() {
                         <span className="badge badge--point">{formatKrw(customer.point)}</span>
                       </td>
                       <td className="muted" data-label="등록 시각">
-                        {formatDateTime(customer.createdAt)}
+                        {formatDateTimeShort(customer.createdAt)}
                       </td>
                       <td className="actions">
                         <button

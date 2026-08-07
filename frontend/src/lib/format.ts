@@ -16,3 +16,13 @@ export function formatDateTime(value: string): string {
 export function formatDate(value: string): string {
   return value.slice(0, 10);
 }
+
+/**
+ * 목록 셀용 압축 표기. `"2026-08-07T22:18:24"` → `"08-07 22:18"`.
+ *
+ * 표에서 전체 타임스탬프는 좁은 열에서 두 줄로 깨져 행 높이를 들쭉날쭉하게 만든다.
+ * 목록에서 필요한 것은 "언제쯤"이고 연도와 초는 상세 패널에서 전체 값으로 본다.
+ */
+export function formatDateTimeShort(value: string): string {
+  return `${value.slice(5, 10)} ${value.slice(11, 16)}`;
+}

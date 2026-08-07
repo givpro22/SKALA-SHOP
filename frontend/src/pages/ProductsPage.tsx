@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { AsyncBoundary } from '../components/AsyncBoundary';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { ProductThumb } from '../components/ProductThumb';
 import {
   useCreateProduct,
   useDeleteProduct,
@@ -16,9 +17,10 @@ interface ProductForm {
   description: string;
   price: string;
   stock: string;
+  imageUrl: string;
 }
 
-const EMPTY_FORM: ProductForm = { name: '', description: '', price: '', stock: '' };
+const EMPTY_FORM: ProductForm = { name: '', description: '', price: '', stock: '', imageUrl: '' };
 
 function toForm(product: ProductResponse): ProductForm {
   return {
@@ -27,6 +29,7 @@ function toForm(product: ProductResponse): ProductForm {
     description: product.description ?? '',
     price: String(product.price),
     stock: String(product.stock),
+    imageUrl: product.imageUrl ?? '',
   };
 }
 
@@ -62,6 +65,8 @@ export function ProductsPage() {
       description: form.description.trim() === '' ? null : form.description,
       price,
       stock,
+      // 설명과 같은 이유로 빈 문자열은 null 이다. PUT 이 전체 교체이므로 명시해 덮어쓴다.
+      imageUrl: form.imageUrl.trim() === '' ? null : form.imageUrl.trim(),
     };
 
     const outcome =
@@ -112,77 +117,69 @@ export function ProductsPage() {
             emptyMessage="등록된 상품이 없습니다. 등록 폼으로 첫 상품을 추가해 보세요."
           >
             {(list) => (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>id</th>
-                    <th>상품명</th>
-                    <th>설명</th>
-                    <th className="num">단가</th>
-                    <th className="num">재고</th>
-                    <th>수정 시각</th>
-                    <th>작업</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((product) => (
-                    <tr
-                      key={product.productId}
-                      className={detailId === product.productId ? 'is-selected' : undefined}
-                    >
-                      {/* data-label 은 560px 미만에서 컬럼 헤드를 대신한다. thead 가 사라지고
-                          각 값 앞에 mono 캡션으로 다시 나타난다. */}
-                      <td data-label="id">{product.productId}</td>
-                      <td className="strong" data-label="상품명">
-                        {product.name}
-                      </td>
-                      <td className="muted" data-label="설명">
-                        {product.description ?? '—'}
-                      </td>
-                      <td className="num" data-label="단가">
-                        {formatKrw(product.price)}
-                      </td>
-                      <td className="num" data-label="재고">
-                        <span className={product.stock <= 2 ? 'badge badge--warn' : undefined}>
-                          {product.stock}
+              // 표가 아니라 카드 그리드다. 상품은 그림이 있는 대상이라 행으로 늘어놓으면
+              // 썸네일이 셀 하나에 갇혀 아무 역할도 못 한다. 내부 id·수정 시각처럼
+              // 사용자가 판단에 쓰지 않는 값은 카드에서 빼고 상세 패널로 넘겼다.
+              <div className="pgrid">
+                {list.map((product) => (
+                  <article
+                    key={product.productId}
+                    className={
+                      detailId === product.productId ? 'pcard is-selected' : 'pcard'
+                    }
+                  >
+                    <ProductThumb product={product} />
+
+                    <div className="pcard__body">
+                      <h4 className="pcard__name">{product.name}</h4>
+                      <p className="pcard__desc">{product.description ?? '—'}</p>
+                      <p className="pcard__meta">
+                        <span className="pcard__price">{formatKrw(product.price)}</span>
+                        {/* 정상 재고는 배지로 만들지 않는다. 목록의 모든 카드가 검은 필을
+                            달면 삭제 버튼을 코랄로 채웠을 때와 같은 문제가 된다 — 강조가
+                            반복되면 정작 부족한 재고가 눈에 띄지 않는다. */}
+                        <span
+                          className={
+                            product.stock <= 2 ? 'badge badge--warn' : 'pcard__stock'
+                          }
+                        >
+                          재고 {product.stock}
                         </span>
-                      </td>
-                      <td className="muted" data-label="수정 시각">
-                        {formatDateTime(product.updatedAt)}
-                      </td>
-                      <td className="actions">
-                        <button
-                          type="button"
-                          className="btn btn--sm"
-                          onClick={() => setDetailId(product.productId)}
-                        >
-                          상세
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--sm"
-                          onClick={() => {
-                            setEditingId(product.productId);
-                            setForm(toForm(product));
-                            createProduct.reset();
-                            updateProduct.reset();
-                          }}
-                        >
-                          수정
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--sm btn--danger"
-                          disabled={deleteProduct.pending}
-                          onClick={() => void handleDelete(product)}
-                        >
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </p>
+                    </div>
+
+                    <div className="pcard__actions">
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        onClick={() => setDetailId(product.productId)}
+                      >
+                        상세
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        onClick={() => {
+                          setEditingId(product.productId);
+                          setForm(toForm(product));
+                          createProduct.reset();
+                          updateProduct.reset();
+                        }}
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--danger"
+                        disabled={deleteProduct.pending}
+                        onClick={() => void handleDelete(product)}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
             )}
           </AsyncBoundary>
 
@@ -235,6 +232,16 @@ export function ProductsPage() {
                   min={0}
                   value={form.stock}
                   onChange={(event) => setForm({ ...form, stock: event.target.value })}
+                />
+              </label>
+              <label>
+                이미지 주소 (선택)
+                <input
+                  type="text"
+                  maxLength={500}
+                  placeholder="/products/mouse.svg"
+                  value={form.imageUrl}
+                  onChange={(event) => setForm({ ...form, imageUrl: event.target.value })}
                 />
               </label>
               <div className="form__actions">

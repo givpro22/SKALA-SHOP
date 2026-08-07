@@ -209,19 +209,24 @@
 }
 
 /*
- * 파괴적 조작(삭제 · 주문 취소)에 coral 을 쓴다. 이 시스템에는 danger 색이 없고
- * 위계는 색상(hue)이 아니라 채움(fill)으로 표현되지만, 관리 화면에서 삭제 버튼이
- * 조회 버튼과 같은 표면인 것은 사고를 부른다. coral 은 "거부·실패" 계열이고
- * 삭제는 그 계열의 조작이라 의미가 어긋나지 않는다.
+ * 삭제 버튼을 코랄로 채우지 않는다.
+ *
+ * 목록에 상품이 여섯이면 코랄 블록이 여섯 번 반복되어, "한 뷰포트에 컬러블록 하나"와
+ * "데이터 목록에 색을 깔지 마라"를 동시에 어긴다. 그러면 정작 에러가 떴을 때 코랄이
+ * 특별해 보이지 않는다 — 이미 화면 곳곳에 있던 색이기 때문이다.
+ *
+ * 위험은 색이 아니라 **테두리와 hover** 로 알린다. 파괴적 동작이라는 신호는 누르기
+ * 직전에 가장 필요하고, 그때 코랄이 나타난다.
  */
 .btn--danger {
-  background: var(--color-block-coral);
+  background: transparent;
   color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px var(--color-ink);
 }
 
 .btn--danger:hover:not(:disabled) {
   background: var(--color-block-coral);
-  opacity: 0.82;
+  box-shadow: inset 0 0 0 1px var(--color-ink);
 }
 
 /* 코랄 블록 위의 재시도 버튼. 블록 안에서는 검정이 프라이머리다 */
@@ -730,4 +735,133 @@
   font-weight: var(--weight-body-sm);
   line-height: var(--lh-body-sm);
   overflow-wrap: anywhere;
+}
+
+/* ==================================================================== */
+/* 상품 카드 그리드                                                      */
+/* ==================================================================== */
+
+/*
+ * 상품만 카드다. 고객·주문은 표를 유지한다.
+ *
+ * 기준은 "그림이 판단에 쓰이는가"이다. 상품은 무엇인지 알아보는 데 그림이 쓰이므로
+ * 썸네일이 주인공이 될 자리가 필요하다. 고객·주문은 값을 비교하는 대상이라 열이
+ * 정렬된 표가 낫다 — 카드로 바꾸면 금액을 세로로 훑을 수 없게 된다.
+ */
+.pgrid {
+  display: grid;
+  /* 최소 240px. 그보다 좁아지면 썸네일이 제 역할을 못 해 카드일 이유가 없다 */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-lg);
+}
+
+.pcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas);
+}
+
+/* 선택된 카드는 색이 아니라 테두리 굵기로 표시한다 */
+.pcard.is-selected {
+  box-shadow: inset 0 0 0 1px var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.pcard__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  /* 카드 높이를 맞춰 액션 줄이 바닥에 정렬되게 한다 */
+  flex: 1 1 auto;
+}
+
+.pcard__name {
+  margin: 0;
+  font-size: var(--fs-card-title);
+  line-height: var(--lh-card-title);
+  letter-spacing: var(--ls-card-title);
+  font-weight: var(--weight-card-title);
+}
+
+.pcard__desc {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  letter-spacing: var(--ls-body-sm);
+  font-weight: var(--weight-body);
+}
+
+.pcard__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin: var(--space-xs) 0 0;
+}
+
+.pcard__price {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body-lg);
+  letter-spacing: var(--ls-body-lg);
+  font-weight: var(--weight-headline);
+}
+
+/*
+ * 버튼 세 개가 한 줄에 들어가지 못하면 줄바꿈된다. 표에서는 이것이 행 높이를
+ * 들쭉날쭉하게 만들었지만, 카드에서는 카드 안에서 접히므로 그리드가 흐트러지지 않는다.
+ */
+.pcard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* ------------------------------------------------------------- 썸네일 */
+
+.thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+}
+
+.thumb--sm {
+  width: 56px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+}
+
+/* 이미지가 없거나 못 불러왔을 때. 상품명 첫 글자를 파스텔 블록에 올린다 */
+.thumb--empty {
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-display-lg);
+  line-height: 1;
+  font-weight: var(--weight-display);
+}
+
+.thumb--sm.thumb--empty {
+  font-size: var(--fs-body-lg);
+}
+
+.thumb--empty[data-tone='0'] { background: var(--color-block-mint); }
+.thumb--empty[data-tone='1'] { background: var(--color-block-lilac); }
+.thumb--empty[data-tone='2'] { background: var(--color-block-cream); }
+.thumb--empty[data-tone='3'] { background: var(--color-block-pink); }
+.thumb--empty[data-tone='4'] { background: var(--color-block-lime); }
+.thumb--empty[data-tone='5'] { background: var(--color-block-coral); }
+
+/* 정상 재고 — 배지가 아니라 평문. 위계는 색이 아니라 크기·웨이트로 만든다 */
+.pcard__stock {
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  letter-spacing: var(--ls-body-sm);
+  font-weight: var(--weight-body);
 }
