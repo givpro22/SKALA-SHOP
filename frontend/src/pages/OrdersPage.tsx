@@ -232,48 +232,66 @@ export function OrdersPage() {
               </button>
             </form>
 
-            {createOrder.result !== null && (
-              <div className="banner banner--success block block--ok" role="status">
-                <div className="banner__head">
-                  <span className="badge badge--ok">201 ORDERED</span>
-                  <strong className="banner__title">주문이 완료되었습니다</strong>
-                </div>
-                <p>
-                  주문번호 <strong>#{createOrder.result.orderId}</strong> ·{' '}
-                  {createOrder.result.customerName} · 총액{' '}
-                  <strong>{formatKrw(createOrder.result.totalPrice)}</strong>
-                </p>
-                <ul className="banner__fields">
-                  {createOrder.result.items.map((item) => (
-                    <li key={item.orderItemId}>
-                      {item.productName} × {item.quantity} = {formatKrw(item.subtotal)}
-                    </li>
-                  ))}
-                </ul>
-                <p className="muted">주문 시각 {formatDateTime(createOrder.result.orderedAt)}</p>
-              </div>
-            )}
-
-            {createOrder.error !== null && (
-              <ErrorBanner
-                error={createOrder.error}
-                // CONCURRENT_UPDATE 처럼 재시도 가능한 코드일 때만 버튼이 그려진다.
-                // 같은 요청을 그대로 다시 보낸다 — 서버 상태는 요청 이전과 동일하므로
-                // 되돌릴 것이 없다(계약 §5.1).
-                onRetry={() => {
-                  const parsedCustomerId = Number.parseInt(customerId, 10);
-                  if (Number.isNaN(parsedCustomerId)) return;
-                  const items = buildItems(lines);
-                  if (items.length === 0) return;
-                  void createOrder.run({ customerId: parsedCustomerId, items });
-                }}
-                onDismiss={createOrder.reset}
-              />
-            )}
           </div>
         </div>
 
         <aside className="layout__side">
+          {/*
+           * 주문 결과 배너는 폼 아래가 아니라 사이드 최상단에 둔다.
+           *
+           * 폼 아래에 쌓으면 배너가 세로 스택의 맨 끝에 붙어, 배너 본문까지 보려면
+           * 1048px(포인트 부족 케이스는 1087px)의 뷰포트 높이가 필요했다. 일반적인
+           * 데스크톱 높이에서 에러 코드·HTTP 상태·서버 메시지가 접힌 부분 아래로
+           * 밀려나 "무엇이 부족해서 거부됐는지"가 한 화면에 남지 않았다(QA 라운드 5·6 ⑤).
+           *
+           * 폼의 컨텍스트 값(보유 포인트 587px, 재고 725px, 예상 총액 812px)은 원래
+           * 뷰포트 안에 들어와 있었다. 초과하는 것은 배너 하나뿐이었으므로, 배너를
+           * 세로 스택에서 빼 폼 오른쪽 열로 옮기면 여섯 요소가 같은 프레임에 남는다.
+           *
+           * 여백을 줄이는 방식은 택하지 않았다 — 폼 위 크롬이 363px(헤더 71 + 섹션
+           * 여백 96 ×2 + 페이지 헤드 101)인데, 이를 깎아 맞추려면 디자인 시스템의
+           * 세로 리듬 토큰을 전역으로 무너뜨려야 하고 그래도 포인트 부족 케이스는
+           * 통과하지 못한다.
+           */}
+          {createOrder.result !== null && (
+            <div className="banner banner--success block block--ok" role="status">
+              <div className="banner__head">
+                <span className="badge badge--ok">201 ORDERED</span>
+                <strong className="banner__title">주문이 완료되었습니다</strong>
+              </div>
+              <p>
+                주문번호 <strong>#{createOrder.result.orderId}</strong> ·{' '}
+                {createOrder.result.customerName} · 총액{' '}
+                <strong>{formatKrw(createOrder.result.totalPrice)}</strong>
+              </p>
+              <ul className="banner__fields">
+                {createOrder.result.items.map((item) => (
+                  <li key={item.orderItemId}>
+                    {item.productName} × {item.quantity} = {formatKrw(item.subtotal)}
+                  </li>
+                ))}
+              </ul>
+              <p className="muted">주문 시각 {formatDateTime(createOrder.result.orderedAt)}</p>
+            </div>
+          )}
+
+          {createOrder.error !== null && (
+            <ErrorBanner
+              error={createOrder.error}
+              // CONCURRENT_UPDATE 처럼 재시도 가능한 코드일 때만 버튼이 그려진다.
+              // 같은 요청을 그대로 다시 보낸다 — 서버 상태는 요청 이전과 동일하므로
+              // 되돌릴 것이 없다(계약 §5.1).
+              onRetry={() => {
+                const parsedCustomerId = Number.parseInt(customerId, 10);
+                if (Number.isNaN(parsedCustomerId)) return;
+                const items = buildItems(lines);
+                if (items.length === 0) return;
+                void createOrder.run({ customerId: parsedCustomerId, items });
+              }}
+              onDismiss={createOrder.reset}
+            />
+          )}
+
           {detailId !== null && (
             <div className="card">
               <div className="card__head">
