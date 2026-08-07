@@ -1,0 +1,67 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: skala-shop-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-skalashop}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-skalashop}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      # named volume이 없으면 `docker compose down`에 데이터가 증발한다.
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      # backend가 이 조건을 기다린다. depends_on만으로는 컨테이너 "시작"만 보장되고
+      # MySQL이 접속을 받을 준비가 됐는지는 보장되지 않아 backend가 커넥션 실패로 죽는다.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-skalashop}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    container_name: skala-shop-backend
+    environment:
+      # 이걸 빼면 컨테이너가 H2 인메모리로 뜬다. 겉보기엔 정상 동작하므로
+      # 재기동마다 데이터가 사라지는 것을 늦게 발견한다.
+      SPRING_PROFILES_ACTIVE: prod
+      # 컨테이너 사이에서는 서비스명이 DNS 이름이다. localhost가 아니다.
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-skalashop}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-skalashop}
+      DDL_AUTO: ${DDL_AUTO:-update}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      # actuator를 넣지 않았으므로 실제 API로 확인한다.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/products"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # 브라우저가 접근하는 주소다. 브라우저는 호스트에서 돌기 때문에
+        # http://backend:8080(컨테이너 내부 DNS)을 쓰면 해석하지 못한다.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    container_name: skala-shop-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
