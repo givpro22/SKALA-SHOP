@@ -28,5 +28,10 @@ public record ProductCreateRequest(
 		@Schema(description = "재고 수량", example = "50")
 		@NotNull(message = "재고는 필수입니다")
 		@PositiveOrZero(message = "재고는 0 이상이어야 합니다")
-		Integer stock) {
+		Integer stock,
+
+		@Schema(description = "상품 이미지 주소. 생략 가능하며 절대 URL과 앱 내부 경로를 모두 받는다",
+				example = "/products/mouse.svg", nullable = true, maxLength = 500)
+		@Size(max = 500, message = "이미지 주소는 500자를 넘을 수 없습니다")
+		String imageUrl) {
 }

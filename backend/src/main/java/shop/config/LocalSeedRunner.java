@@ -76,15 +76,15 @@ public class LocalSeedRunner implements CommandLineRunner {
 	 */
 	private void seedProducts() {
 		productRepository.saveAll(List.of(
-				Product.create("무선 마우스", "조용한 클릭, 2.4GHz 무선", 25_000, 50),
-				Product.create("기계식 키보드", "적축 텐키리스", 89_000, 30),
+				Product.create("무선 마우스", "조용한 클릭, 2.4GHz 무선", 25_000, 50, "/products/mouse.svg"),
+				Product.create("기계식 키보드", "적축 텐키리스", 89_000, 30, "/products/keyboard.svg"),
 				// 캡처 06 — 재고 부족 재현용. 3개를 주문하면 반드시 거부된다.
-				Product.create("27인치 모니터", "QHD 75Hz", 320_000, 2),
-				Product.create("USB-C 허브", "7포트, PD 100W", 45_000, 15),
-				Product.create("노이즈캔슬링 헤드폰", "최대 30시간 재생", 210_000, 8),
+				Product.create("27인치 모니터", "QHD 75Hz", 320_000, 2, "/products/monitor.svg"),
+				Product.create("USB-C 허브", "7포트, PD 100W", 45_000, 15, "/products/hub.svg"),
+				Product.create("노이즈캔슬링 헤드폰", "최대 30시간 재생", 210_000, 8, "/products/headphone.svg"),
 				// 캡처 09 — 낙관적 락 재현용. 재고를 100으로 크게 둔 것은 의도다(§6.6):
 				// OUT_OF_STOCK이 발생할 수 없으므로 "실패했다면 그것은 락이다"가 참이 된다.
-				Product.create("한정판 키캡 세트", "PBT 이중사출", 12_000, 100)));
+				Product.create("한정판 키캡 세트", "PBT 이중사출", 12_000, 100, "/products/keycap.svg")));
 	}
 
 	private void seedCustomers() {

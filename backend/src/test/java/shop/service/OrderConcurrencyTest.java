@@ -260,7 +260,7 @@ class OrderConcurrencyTest {
 
 	private Long saveProduct(String name, int price, int stock) {
 		return transactionTemplate.execute(
-				s -> productRepository.save(Product.create(name, null, price, stock)).getId());
+				s -> productRepository.save(Product.create(name, null, price, stock, null)).getId());
 	}
 
 	private Long saveCustomer(String name, String email, int point) {

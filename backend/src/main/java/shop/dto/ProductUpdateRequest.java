@@ -32,5 +32,10 @@ public record ProductUpdateRequest(
 				example = "48")
 		@NotNull(message = "재고는 필수입니다")
 		@PositiveOrZero(message = "재고는 0 이상이어야 합니다")
-		Integer stock) {
+		Integer stock,
+
+		@Schema(description = "상품 이미지 주소. 생략하면 null로 덮어쓴다(전체 교체 시맨틱)",
+				example = "/products/mouse.svg", nullable = true, maxLength = 500)
+		@Size(max = 500, message = "이미지 주소는 500자를 넘을 수 없습니다")
+		String imageUrl) {
 }

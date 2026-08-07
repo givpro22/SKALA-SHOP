@@ -50,6 +50,16 @@ public class Product {
 	@Column(nullable = false)
 	private int stock;
 
+	/**
+	 * 상품 이미지 주소. 없으면 {@code null}이고 화면은 대체 표시로 떨어진다.
+	 *
+	 * <p>절대 URL과 앱 내부 경로(<code>/products/mouse.svg</code>)를 모두 허용하므로 형식 검증을
+	 * 걸지 않는다. URL 정규식을 걸면 내부 경로가 막히고, 그러면 이미지가 외부 호스트에만
+	 * 의존하게 되어 네트워크 없이 뜬 컨테이너에서 전부 깨진다.
+	 */
+	@Column(length = 500)
+	private String imageUrl;
+
 	@CreatedDate
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
@@ -68,15 +78,16 @@ public class Product {
 	@Getter(AccessLevel.NONE)
 	private Long version;
 
-	private Product(String name, String description, int price, int stock) {
+	private Product(String name, String description, int price, int stock, String imageUrl) {
 		this.name = name;
 		this.description = description;
 		this.price = price;
 		this.stock = stock;
+		this.imageUrl = imageUrl;
 	}
 
-	public static Product create(String name, String description, int price, int stock) {
-		return new Product(name, description, price, stock);
+	public static Product create(String name, String description, int price, int stock, String imageUrl) {
+		return new Product(name, description, price, stock, imageUrl);
 	}
 
 	/**
@@ -85,11 +96,12 @@ public class Product {
 	 * <p>여기서 바꾼 {@code price}·{@code stock}은 기존 주문에 소급되지 않는다(BR-12).
 	 * {@code OrderItem.orderPrice}가 주문 시점 스냅샷이므로 자동으로 성립한다.
 	 */
-	public void update(String name, String description, int price, int stock) {
+	public void update(String name, String description, int price, int stock, String imageUrl) {
 		this.name = name;
 		this.description = description;
 		this.price = price;
 		this.stock = stock;
+		this.imageUrl = imageUrl;
 	}
 
 	/** 주문 생성 시 재고 차감(BR-7). 부족하면 차감하지 않고 거부한다. */

@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import shop.domain.Product;
 
 /**
- * 계약 §3.1. <b>필드 7개 고정.</b>
+ * 계약 §3.1. <b>필드 8개 고정</b>(2026-08-08 {@code imageUrl} 추가).
  *
  * <p>id 필드명이 {@code id}가 아니라 {@code productId}다. 중첩 응답에서 어느 엔티티의 id인지
  * 드러나게 하기 위한 것이며, 프론트 타입이 이 이름에 의존한다.
@@ -34,6 +34,10 @@ public record ProductResponse(
 		@Schema(description = "재고 수량", example = "50")
 		int stock,
 
+		@Schema(description = "상품 이미지 주소. 없으면 null이며 화면은 대체 표시로 떨어진다",
+				example = "/products/mouse.svg", nullable = true)
+		String imageUrl,
+
 		@Schema(description = "등록 시각", example = "2026-08-05T14:30:00")
 		@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
 		LocalDateTime createdAt,
@@ -49,6 +53,7 @@ public record ProductResponse(
 				product.getDescription(),
 				product.getPrice(),
 				product.getStock(),
+				product.getImageUrl(),
 				product.getCreatedAt(),
 				product.getUpdatedAt());
 	}

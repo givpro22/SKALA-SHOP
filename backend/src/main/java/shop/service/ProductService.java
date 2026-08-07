@@ -39,7 +39,8 @@ public class ProductService {
 			throw new DuplicateProductNameException(request.name());
 		}
 		Product product = productRepository.save(Product.create(
-				request.name(), request.description(), request.price(), request.stock()));
+				request.name(), request.description(), request.price(), request.stock(),
+				request.imageUrl()));
 		return ProductResponse.from(product);
 	}
 
@@ -66,7 +67,8 @@ public class ProductService {
 		if (productRepository.existsByNameAndIdNot(request.name(), id)) {
 			throw new DuplicateProductNameException(request.name());
 		}
-		product.update(request.name(), request.description(), request.price(), request.stock());
+		product.update(request.name(), request.description(), request.price(), request.stock(),
+				request.imageUrl());
 		return ProductResponse.from(product);
 	}
 
