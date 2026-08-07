@@ -1,3 +1,5 @@
+@import './styles/tokens.css';
+
 /* 기능이 드러나는 최소 레이아웃. 디자인에 과투자하지 않는다. */
 
 :root {
