@@ -4,6 +4,10 @@ services:
     image: mysql:8.0
     container_name: skala-shop-mysql
     environment:
+      # backend와 로그 시각을 맞춘다. 앱이 LocalDateTime을 쓰고 MySQL 시간 함수를 쓰지 않아
+      # 데이터 의미에는 영향이 없지만, 장애를 추적할 때 두 컨테이너 로그가 9시간 어긋나 있으면
+      # 같은 사건을 시간순으로 잇기 어렵다.
+      TZ: Asia/Seoul
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-skalashop}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-skalashop}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
