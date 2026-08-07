@@ -183,12 +183,19 @@ export function ProductsPage() {
             )}
           </AsyncBoundary>
 
-          {deleteProduct.error !== null && (
-            <ErrorBanner error={deleteProduct.error} onDismiss={deleteProduct.reset} />
-          )}
         </div>
 
         <aside className="layout__side">
+          {/*
+           * 삭제 실패 배너는 목록 아래가 아니라 사이드 최상단에 둔다.
+           *
+           * 목록 아래에 두면 카드·행이 여러 개일 때 배너가 접힌 부분 밑으로 밀려, 삭제를
+           * 눌렀는데 화면에 아무 반응이 없는 것처럼 보인다. 주문 화면에서 같은 결함을
+           * 라운드 7에 고쳤고(에러 배너를 사이드로), 여기도 같은 규칙을 적용한다.
+           */}
+          {deleteProduct.error !== null && (
+            <ErrorBanner error={deleteProduct.error} onDismiss={deleteProduct.reset} />
+          )}
           {/* 입력이 결과를 만드는 곳 — lilac 컬러블록 */}
           <div className="block block--form">
             <h3>{editingId === null ? '상품 등록' : `상품 수정 (id: ${editingId})`}</h3>

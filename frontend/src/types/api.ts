@@ -126,7 +126,12 @@ export type ErrorCode =
   | 'PRODUCT_IN_USE'
   | 'CUSTOMER_HAS_ORDERS'
   | 'CONCURRENT_UPDATE'
-  | 'INTERNAL_ERROR';
+  | 'INTERNAL_ERROR'
+  // 인증 (계약 §8.4)
+  | 'INVALID_CREDENTIALS'
+  | 'UNAUTHORIZED'
+  | 'TOKEN_EXPIRED'
+  | 'DUPLICATE_USERNAME';
 
 export interface FieldError {
   field: string;
@@ -149,3 +154,28 @@ export interface ErrorResponse {
 export type ProductListResponse = ProductResponse[];
 export type CustomerListResponse = CustomerResponse[];
 export type OrderListResponse = OrderResponse[];
+
+// ------------------------------------------------------------------ 인증 (계약 §8)
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface SignupRequest {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  /** 토큰 유효 기간(초). */
+  expiresIn: number;
+  username: string;
+}
+
+export interface UserResponse {
+  userId: number;
+  username: string;
+  createdAt: string;
+}

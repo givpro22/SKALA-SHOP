@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { AuthBar } from './components/AuthBar';
+import { useAuth } from './hooks/useAuth';
 import { CustomersPage } from './pages/CustomersPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { ProductsPage } from './pages/ProductsPage';
@@ -15,6 +17,7 @@ const TABS: { id: Tab; label: string }[] = [
 // 상태 하나로 두는 편이 얻는 것이 많다.
 export default function App() {
   const [tab, setTab] = useState<Tab>('products');
+  const auth = useAuth();
 
   return (
     <div className="app">
@@ -33,6 +36,7 @@ export default function App() {
           ))}
         </nav>
         <span className="app__api">API {import.meta.env.VITE_API_BASE_URL ?? '(same-origin)'}</span>
+        <AuthBar auth={auth} />
       </header>
 
       <main className="app__body">
@@ -41,7 +45,10 @@ export default function App() {
         {tab === 'orders' && <OrdersPage />}
       </main>
 
-      <footer className="app__foot">SKALA-SHOP · 상품 · 고객 · 주문</footer>
+      <footer className="app__foot">
+        SKALA-SHOP · 상품 · 고객 · 주문
+        {!auth.loggedIn && ' · 조회는 로그인 없이, 등록·수정·삭제는 로그인 후'}
+      </footer>
     </div>
   );
 }

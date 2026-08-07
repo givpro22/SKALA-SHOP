@@ -1,3 +1,4 @@
+import { clearToken, readToken } from '../lib/token';
 import type { ErrorCode, ErrorResponse, FieldError } from '../types/api';
 
 /**
@@ -65,7 +66,7 @@ export class ApiError extends Error {
 }
 
 /**
- * 계약 §5 표의 18개 코드.
+ * 계약 §5 표의 22개 코드.
  *
  * `Record<ErrorCode, true>` 로 선언했기 때문에 계약에 코드가 추가됐는데 여기에 빠지면
  * **컴파일이 실패한다.** 배열 리터럴로 두면 조용히 누락된다.
@@ -89,6 +90,10 @@ const KNOWN_ERROR_CODES: Record<ErrorCode, true> = {
   CUSTOMER_HAS_ORDERS: true,
   CONCURRENT_UPDATE: true,
   INTERNAL_ERROR: true,
+  INVALID_CREDENTIALS: true,
+  UNAUTHORIZED: true,
+  TOKEN_EXPIRED: true,
+  DUPLICATE_USERNAME: true,
 };
 
 function isErrorCode(value: unknown): value is ErrorCode {
@@ -125,13 +130,27 @@ interface SendOptions {
   body?: unknown;
 }
 
+/**
+ * 토큰이 있으면 붙이고 없으면 붙이지 않는다.
+ *
+ * 빈 `Authorization` 헤더를 보내지 않는 것이 중요하다. 서버 필터는 헤더가 **있는데**
+ * 잘못된 경우를 401 로 즉시 거부하므로(계약 §8.5), 빈 값을 보내면 공개 GET 까지 막힌다.
+ */
+function authHeader(): Record<string, string> {
+  const token = readToken();
+  return token === null ? {} : { Authorization: `Bearer ${token}` };
+}
+
 async function send(path: string, options: SendOptions): Promise<Response> {
   const hasBody = options.body !== undefined;
   try {
     return await fetch(`${BASE_URL}${path}`, {
       method: options.method,
       // 취소(POST /api/orders/{id}/cancel)는 본문이 없다. Content-Type 도 붙이지 않는다.
-      headers: hasBody ? { 'Content-Type': 'application/json;charset=UTF-8' } : undefined,
+      headers: {
+        ...(hasBody ? { 'Content-Type': 'application/json;charset=UTF-8' } : {}),
+        ...authHeader(),
+      },
       body: hasBody ? JSON.stringify(options.body) : undefined,
     });
   } catch {
@@ -177,6 +196,18 @@ async function toApiError(res: Response, path: string): Promise<ApiError> {
       res.status,
       null,
     );
+  }
+
+  /*
+   * 토큰이 더 이상 통하지 않으면 그 자리에서 지운다.
+   *
+   * 지우지 않으면 화면은 "로그인됨"으로 보이는데 모든 쓰기가 401 로 실패한다 — 사용자는
+   * 무엇이 잘못됐는지 알 수 없고, 다시 로그인할 방법도 화면에 없다.
+   *
+   * INVALID_CREDENTIALS 는 제외한다. 그건 로그인 시도 자체가 틀린 것이라 지울 토큰이 없다.
+   */
+  if (parsed.code === 'TOKEN_EXPIRED' || parsed.code === 'UNAUTHORIZED') {
+    clearToken();
   }
 
   return new ApiError(parsed.code, parsed.message, res.status, parsed.fieldErrors);

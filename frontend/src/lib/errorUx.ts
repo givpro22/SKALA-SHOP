@@ -35,6 +35,29 @@ export interface ErrorUx {
  * 없는 재고를 계속 두드리게 된다(400을 일시적 문제로 오인).
  */
 export const ERROR_UX: Record<ClientErrorCode, ErrorUx> = {
+  // --- 401 인증: 로그인 상태를 고쳐야 한다
+  INVALID_CREDENTIALS: {
+    title: '로그인 실패',
+    retryable: false,
+    hint: '아이디와 비밀번호를 다시 확인해 주세요.',
+  },
+  UNAUTHORIZED: {
+    title: '로그인이 필요합니다',
+    retryable: false,
+    hint: '오른쪽 위에서 로그인한 뒤 다시 시도해 주세요.',
+  },
+  TOKEN_EXPIRED: {
+    title: '로그인이 만료되었습니다',
+    // 같은 요청을 그대로 보내면 또 만료다. 먼저 로그인해야 하므로 재시도 버튼을 주지 않는다.
+    retryable: false,
+    hint: '다시 로그인한 뒤 이어서 진행해 주세요.',
+  },
+  DUPLICATE_USERNAME: {
+    title: '이미 사용 중인 아이디',
+    retryable: false,
+    hint: '다른 아이디로 등록해 주세요.',
+  },
+
   // --- 400 요청이 잘못됨: 입력을 고쳐야 한다
   VALIDATION_ERROR: {
     title: '입력값을 확인해 주세요',
