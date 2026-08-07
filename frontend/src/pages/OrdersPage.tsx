@@ -271,144 +271,6 @@ export function OrdersPage() {
               />
             )}
           </div>
-
-          <div className="card">
-            <div className="card__head">
-              <h3>주문 목록</h3>
-              <label className="inline-field">
-                고객 필터
-                <select
-                  value={filterCustomerId === null ? '' : String(filterCustomerId)}
-                  onChange={(event) =>
-                    setFilterCustomerId(
-                      event.target.value === '' ? null : Number.parseInt(event.target.value, 10),
-                    )
-                  }
-                >
-                  <option value="">전체</option>
-                  {customerList.map((customer) => (
-                    <option key={customer.customerId} value={String(customer.customerId)}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {cancelOutcome !== null && (
-              <div className="banner banner--success block block--ok" role="status">
-                <div className="banner__head">
-                  <span className="badge badge--ok">200 CANCELED</span>
-                  <strong className="banner__title">주문이 취소되었습니다</strong>
-                </div>
-                <p>
-                  주문 <strong>#{cancelOutcome.order.orderId}</strong> ·{' '}
-                  {cancelOutcome.order.customerName} · 취소 금액{' '}
-                  <strong>{formatKrw(cancelOutcome.order.totalPrice)}</strong>
-                </p>
-                <p className="refund">
-                  포인트 환급: {formatKrw(cancelOutcome.pointBefore)} →{' '}
-                  <strong>{formatKrw(cancelOutcome.pointAfter)}</strong>{' '}
-                  <span className="badge badge--ok">
-                    +{formatKrw(cancelOutcome.pointAfter - cancelOutcome.pointBefore)}
-                  </span>
-                </p>
-                {cancelOutcome.order.canceledAt !== null && (
-                  <p className="muted">
-                    취소 시각 {formatDateTime(cancelOutcome.order.canceledAt)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {cancelOrder.error !== null && (
-              <ErrorBanner error={cancelOrder.error} onDismiss={cancelOrder.reset} />
-            )}
-
-            <AsyncBoundary
-              state={orders}
-              isEmpty={(list) => list.length === 0}
-              emptyMessage="주문이 없습니다."
-            >
-              {(list) => (
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>주문번호</th>
-                      <th>고객</th>
-                      <th>항목</th>
-                      <th className="num">총액</th>
-                      <th>상태</th>
-                      <th>주문 시각</th>
-                      <th>취소 시각</th>
-                      <th>작업</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((order) => (
-                      <tr
-                        key={order.orderId}
-                        className={detailId === order.orderId ? 'is-selected' : undefined}
-                      >
-                        {/* data-label 은 560px 미만에서 컬럼 헤드를 대신한다 */}
-                        <td data-label="주문번호">#{order.orderId}</td>
-                        <td className="strong" data-label="고객">
-                          {order.customerName}
-                        </td>
-                        <td className="muted" data-label="항목">
-                          {order.items
-                            .map((item) => `${item.productName} × ${item.quantity}`)
-                            .join(', ')}
-                        </td>
-                        <td className="num" data-label="총액">
-                          {formatKrw(order.totalPrice)}
-                        </td>
-                        <td data-label="상태">
-                          <span
-                            className={
-                              order.status === 'ORDERED'
-                                ? 'badge badge--ok'
-                                : 'badge badge--canceled'
-                            }
-                          >
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="muted" data-label="주문 시각">
-                          {formatDateTime(order.orderedAt)}
-                        </td>
-                        <td className="muted" data-label="취소 시각">
-                          {order.canceledAt === null ? '—' : formatDateTime(order.canceledAt)}
-                        </td>
-                        <td className="actions">
-                          <button
-                            type="button"
-                            className="btn btn--sm"
-                            onClick={() => setDetailId(order.orderId)}
-                          >
-                            상세
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn--sm btn--danger"
-                            disabled={cancelOrder.pending}
-                            onClick={() => void handleCancel(order)}
-                          >
-                            주문 취소
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </AsyncBoundary>
-            <p className="note">
-              취소 버튼은 이미 취소된 주문에도 노출됩니다. 이중 취소를 막는 주체는 화면이 아니라
-              서버이며, 그 거부(400 ALREADY_CANCELED)가 실제로 동작하는지 확인할 수 있어야
-              합니다.
-            </p>
-          </div>
         </div>
 
         <aside className="layout__side">
@@ -529,6 +391,144 @@ export function OrdersPage() {
             </AsyncBoundary>
           </div>
         </aside>
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <h3>주문 목록</h3>
+          <label className="inline-field">
+            고객 필터
+            <select
+              value={filterCustomerId === null ? '' : String(filterCustomerId)}
+              onChange={(event) =>
+                setFilterCustomerId(
+                  event.target.value === '' ? null : Number.parseInt(event.target.value, 10),
+                )
+              }
+            >
+              <option value="">전체</option>
+              {customerList.map((customer) => (
+                <option key={customer.customerId} value={String(customer.customerId)}>
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {cancelOutcome !== null && (
+          <div className="banner banner--success block block--ok" role="status">
+            <div className="banner__head">
+              <span className="badge badge--ok">200 CANCELED</span>
+              <strong className="banner__title">주문이 취소되었습니다</strong>
+            </div>
+            <p>
+              주문 <strong>#{cancelOutcome.order.orderId}</strong> ·{' '}
+              {cancelOutcome.order.customerName} · 취소 금액{' '}
+              <strong>{formatKrw(cancelOutcome.order.totalPrice)}</strong>
+            </p>
+            <p className="refund">
+              포인트 환급: {formatKrw(cancelOutcome.pointBefore)} →{' '}
+              <strong>{formatKrw(cancelOutcome.pointAfter)}</strong>{' '}
+              <span className="badge badge--ok">
+                +{formatKrw(cancelOutcome.pointAfter - cancelOutcome.pointBefore)}
+              </span>
+            </p>
+            {cancelOutcome.order.canceledAt !== null && (
+              <p className="muted">
+                취소 시각 {formatDateTime(cancelOutcome.order.canceledAt)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {cancelOrder.error !== null && (
+          <ErrorBanner error={cancelOrder.error} onDismiss={cancelOrder.reset} />
+        )}
+
+        <AsyncBoundary
+          state={orders}
+          isEmpty={(list) => list.length === 0}
+          emptyMessage="주문이 없습니다."
+        >
+          {(list) => (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>주문번호</th>
+                  <th>고객</th>
+                  <th>항목</th>
+                  <th className="num">총액</th>
+                  <th>상태</th>
+                  <th>주문 시각</th>
+                  <th>취소 시각</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((order) => (
+                  <tr
+                    key={order.orderId}
+                    className={detailId === order.orderId ? 'is-selected' : undefined}
+                  >
+                    {/* data-label 은 560px 미만에서 컬럼 헤드를 대신한다 */}
+                    <td data-label="주문번호">#{order.orderId}</td>
+                    <td className="strong" data-label="고객">
+                      {order.customerName}
+                    </td>
+                    <td className="muted" data-label="항목">
+                      {order.items
+                        .map((item) => `${item.productName} × ${item.quantity}`)
+                        .join(', ')}
+                    </td>
+                    <td className="num" data-label="총액">
+                      {formatKrw(order.totalPrice)}
+                    </td>
+                    <td data-label="상태">
+                      <span
+                        className={
+                          order.status === 'ORDERED'
+                            ? 'badge badge--ok'
+                            : 'badge badge--canceled'
+                        }
+                      >
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="muted" data-label="주문 시각">
+                      {formatDateTime(order.orderedAt)}
+                    </td>
+                    <td className="muted" data-label="취소 시각">
+                      {order.canceledAt === null ? '—' : formatDateTime(order.canceledAt)}
+                    </td>
+                    <td className="actions">
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        onClick={() => setDetailId(order.orderId)}
+                      >
+                        상세
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--danger"
+                        disabled={cancelOrder.pending}
+                        onClick={() => void handleCancel(order)}
+                      >
+                        주문 취소
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </AsyncBoundary>
+        <p className="note">
+          취소 버튼은 이미 취소된 주문에도 노출됩니다. 이중 취소를 막는 주체는 화면이 아니라
+          서버이며, 그 거부(400 ALREADY_CANCELED)가 실제로 동작하는지 확인할 수 있어야
+          합니다.
+        </p>
       </div>
 
       {/*

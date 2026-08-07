@@ -410,13 +410,19 @@
   letter-spacing: var(--ls-body-sm);
 }
 
+/*
+ * 가로 패딩이 인색하다. 주문 8열 테이블은 2단 레이아웃의 본문 열(1080px 기준 575px)에
+ * 들어가야 하는데, 열마다 8px씩 물리면 그것만으로 64px 이 나가 테이블이 카드 밖으로
+ * 밀린다. 열 사이 구분은 정렬과 hairline 이 이미 하고 있다.
+ */
 .table th,
 .table td {
-  padding: var(--space-sm) var(--space-xs);
+  padding: var(--space-sm) var(--space-xxs);
   border-bottom: 1px solid var(--color-hairline-soft);
   text-align: left;
   vertical-align: middle;
 }
+
 
 /* 컬럼 헤드는 mono 대문자 — 분류 표시다 */
 .table th {
@@ -464,6 +470,16 @@
 /* 회색이 아니라 가벼운 웨이트로 낮춘다 */
 .muted {
   font-weight: var(--weight-body);
+}
+
+/*
+ * 이메일처럼 공백이 없는 값은 어절 하나가 통째로 열의 최소 폭이 된다
+ * ("park@skala.shop" 만으로 120px). 고객 테이블은 조작 버튼이 넷이라 여유가 없어서,
+ * 이 열들만 아무 데서나 접히도록 예외를 준다. 공백이 있는 값(설명)은 keep-all 규칙에
+ * 따라 여전히 어절 경계에서 먼저 접힌다.
+ */
+.table td.muted {
+  overflow-wrap: anywhere;
 }
 
 /*
