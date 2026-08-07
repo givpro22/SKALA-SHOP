@@ -170,11 +170,6 @@
     align-items: stretch;
   }
 
-  /* 목록 안 작은 버튼도 터치 뷰포트에서는 손가락 크기여야 한다 */
-  .btn--sm {
-    min-height: var(--tap-min);
-  }
-
   /* 주문 항목 줄은 가로로 성립하지 않는다. 줄마다 카드로 분리한다 */
   .lines {
     padding: var(--space-sm);

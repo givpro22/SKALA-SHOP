@@ -487,8 +487,13 @@ export function OrdersPage() {
             </div>
           )}
 
-          {/* 컨텍스트 요약 — mint 컬러블록. 폼과는 화면 한 판 아래에서 만난다 */}
-          <div className="block block--summary">
+          {/*
+            흰 캔버스 카드다. 이 패널은 데이터를 보여주기만 하고 사용자에게 말을 걸지
+            않는다. 컬러블록으로 만들면 바로 아래 navy 블록과 한 뷰포트에 함께 잡혀
+            둘 다 죽는다(390px 기준 두 블록 간격 72px, 뷰포트 844px).
+            mint 의 "포인트 잔액" 역할은 .badge--point 가 이어받는다.
+          */}
+          <div className="card">
             <h3>상품 재고</h3>
             <AsyncBoundary
               state={products}

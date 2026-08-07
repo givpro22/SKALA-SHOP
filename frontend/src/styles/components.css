@@ -46,9 +46,12 @@
   background: var(--color-block-cream);
 }
 
-.block--summary {
-  background: var(--color-block-mint);
-}
+/*
+ * mint 는 블록으로 쓰지 않는다. 컨텍스트 요약(재고·포인트)을 블록으로 만들면
+ * navy 서사 블록과 한 뷰포트에 함께 잡힌다 — 390px 에서 둘 사이가 72px 인데
+ * 뷰포트는 844px 이라 어떤 간격을 줘도 동시에 보인다. mint 의 "포인트 잔액"
+ * 역할은 .badge--point 가 이어받는다.
+ */
 
 /* 유일한 다크 표면. 차별화 서사에만 쓴다 */
 .block--navy {
@@ -187,7 +190,8 @@
  * 크기만 낮추고 pill·웨이트·표면은 유지한다.
  */
 .btn--sm {
-  min-height: 40px;
+  /* 높이는 줄이지 않는다 — 탭 타겟 44px 은 전 뷰포트 공통이다. 줄이는 것은 폭뿐 */
+  min-height: var(--tap-min);
   padding: 6px 14px 8px;
   font-size: var(--fs-body-sm);
   line-height: var(--lh-body-sm);
@@ -335,6 +339,13 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
+}
+
+/*
+ * mono 는 라벨에만 건다. .lines__head 전체에 걸면 안에 있는 "+ 항목 추가" 버튼까지
+ * mono 를 물려받는다 — mono 는 분류 도구지 버튼 서체가 아니다.
+ */
+.lines__head > span {
   font-family: var(--font-mono);
   font-weight: var(--weight-mono);
   font-size: var(--fs-caption);
