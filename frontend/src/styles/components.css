@@ -675,6 +675,10 @@
  * 빈 상태는 화면이 말을 거는 순간이다 — cream 블록.
  * 대문자 mono 로 두면 안내문이 읽히지 않아 여기서만 sans 로 되돌린다.
  */
+/*
+ * max-width 를 주지 않는다. 이 엘리먼트는 문단인 동시에 블록이라, 글줄을 조이면
+ * 블록 자체가 좁아져 768px 미만의 풀블리드가 무너진다.
+ */
 .state--empty {
   font-family: var(--font-sans);
   font-size: var(--fs-subhead);
@@ -682,7 +686,6 @@
   line-height: var(--lh-subhead);
   letter-spacing: var(--ls-subhead);
   text-transform: none;
-  max-width: 46ch;
 }
 
 /* ==================================================================== */
