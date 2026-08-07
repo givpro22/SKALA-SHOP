@@ -21,7 +21,8 @@ export function ErrorBanner({ error, onRetry, onDismiss }: Props) {
   const ux = ERROR_UX[error.code];
 
   return (
-    <div className="banner banner--error" role="alert" data-error-code={error.code}>
+    // coral 컬러블록. 서버가 규칙을 발동시킨 순간이 이 화면에서 가장 중요한 장면이다.
+    <div className="banner banner--error block block--alert" role="alert" data-error-code={error.code}>
       <div className="banner__head">
         <span className="badge badge--error">{error.code}</span>
         <strong className="banner__title">{ux.title}</strong>

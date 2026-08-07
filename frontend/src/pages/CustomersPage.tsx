@@ -107,7 +107,10 @@ export function CustomersPage() {
   return (
     <section className="page">
       <header className="page__head">
-        <h2>고객</h2>
+        <div className="page__title">
+          <p className="eyebrow">Customers</p>
+          <h2>고객</h2>
+        </div>
         <button type="button" className="btn" onClick={customers.reload}>
           새로고침
         </button>
@@ -202,7 +205,8 @@ export function CustomersPage() {
         </div>
 
         <aside className="layout__side">
-          <div className="card">
+          {/* 입력이 결과를 만드는 곳 — lilac 컬러블록 */}
+          <div className="block block--form">
             <h3>{editingId === null ? '고객 등록' : `고객 수정 (id: ${editingId})`}</h3>
             <form className="form" onSubmit={(event) => void handleSubmit(event)}>
               <label>
@@ -295,8 +299,8 @@ export function CustomersPage() {
               </form>
 
               {chargePoint.result !== null && (
-                <div className="banner banner--success" role="status">
-                  <strong>충전 완료</strong>
+                <div className="banner banner--success block block--ok" role="status">
+                  <strong className="banner__title">충전 완료</strong>
                   <p>
                     {chargePoint.result.name} 님의 보유 포인트가{' '}
                     <strong>{formatKrw(chargePoint.result.point)}</strong> 이 되었습니다.

@@ -40,6 +40,8 @@ export default function App() {
         {tab === 'customers' && <CustomersPage />}
         {tab === 'orders' && <OrdersPage />}
       </main>
+
+      <footer className="app__foot">SKALA-SHOP · 상품 · 고객 · 주문</footer>
     </div>
   );
 }

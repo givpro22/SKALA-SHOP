@@ -104,7 +104,10 @@ export function OrdersPage() {
   return (
     <section className="page">
       <header className="page__head">
-        <h2>주문</h2>
+        <div className="page__title">
+          <p className="eyebrow">Orders</p>
+          <h2>주문</h2>
+        </div>
         <button
           type="button"
           className="btn"
@@ -120,7 +123,8 @@ export function OrdersPage() {
 
       <div className="layout">
         <div className="layout__main">
-          <div className="card">
+          {/* 입력이 결과를 만드는 곳 — lilac 컬러블록 */}
+          <div className="block block--form">
             <h3>주문 생성</h3>
             <form className="form" onSubmit={(event) => void handleCreate(event)}>
               <label>
@@ -229,7 +233,7 @@ export function OrdersPage() {
             </form>
 
             {createOrder.result !== null && (
-              <div className="banner banner--success" role="status">
+              <div className="banner banner--success block block--ok" role="status">
                 <div className="banner__head">
                   <span className="badge badge--ok">201 ORDERED</span>
                   <strong className="banner__title">주문이 완료되었습니다</strong>
@@ -292,7 +296,7 @@ export function OrdersPage() {
             </div>
 
             {cancelOutcome !== null && (
-              <div className="banner banner--success" role="status">
+              <div className="banner banner--success block block--ok" role="status">
                 <div className="banner__head">
                   <span className="badge badge--ok">200 CANCELED</span>
                   <strong className="banner__title">주문이 취소되었습니다</strong>
@@ -470,7 +474,8 @@ export function OrdersPage() {
             </div>
           )}
 
-          <div className="card">
+          {/* 컨텍스트 요약 — mint 컬러블록. 폼과는 화면 한 판 아래에서 만난다 */}
+          <div className="block block--summary">
             <h3>상품 재고</h3>
             <AsyncBoundary
               state={products}
@@ -504,6 +509,21 @@ export function OrdersPage() {
             </AsyncBoundary>
           </div>
         </aside>
+      </div>
+
+      {/*
+        차별화 서사 — 유일한 다크 표면(navy). 페이지에서 한 번만 쓴다.
+        재시도 버튼이 CONCURRENT_UPDATE 에만 뜨는 이유를 화면이 직접 설명한다.
+      */}
+      <div className="block block--navy">
+        <p className="eyebrow">Concurrency</p>
+        <h3 className="headline">재고와 포인트는 낙관적 잠금이 지킨다</h3>
+        <p className="subhead">
+          같은 상품을 동시에 주문하면 <code>@Version</code> 이 충돌을 잡아내고 서버가 409{' '}
+          <code>CONCURRENT_UPDATE</code> 를 돌려준다. 이 코드에만 재시도 버튼이 뜬다. 재고가
+          실제로 모자란 400 <code>OUT_OF_STOCK</code> 은 몇 번을 눌러도 결과가 같아서 버튼을
+          주지 않는다.
+        </p>
       </div>
     </section>
   );

@@ -93,7 +93,10 @@ export function ProductsPage() {
   return (
     <section className="page">
       <header className="page__head">
-        <h2>상품</h2>
+        <div className="page__title">
+          <p className="eyebrow">Products</p>
+          <h2>상품</h2>
+        </div>
         <button type="button" className="btn" onClick={products.reload}>
           새로고침
         </button>
@@ -105,7 +108,8 @@ export function ProductsPage() {
           <AsyncBoundary
             state={products}
             isEmpty={(list) => list.length === 0}
-            emptyMessage="등록된 상품이 없습니다. 오른쪽 폼으로 첫 상품을 등록해 보세요."
+            // 1단으로 접히면 폼이 목록 아래로 내려가므로 방향("오른쪽")을 쓰지 않는다.
+            emptyMessage="등록된 상품이 없습니다. 등록 폼으로 첫 상품을 추가해 보세요."
           >
             {(list) => (
               <table className="table">
@@ -178,7 +182,8 @@ export function ProductsPage() {
         </div>
 
         <aside className="layout__side">
-          <div className="card">
+          {/* 입력이 결과를 만드는 곳 — lilac 컬러블록 */}
+          <div className="block block--form">
             <h3>{editingId === null ? '상품 등록' : `상품 수정 (id: ${editingId})`}</h3>
             <form className="form" onSubmit={(event) => void handleSubmit(event)}>
               <label>

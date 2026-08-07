@@ -1,0 +1,703 @@
+/**
+ * 공통 컴포넌트.
+ *
+ * 원칙 셋:
+ *   1. 모든 텍스트 버튼은 pill. 각진 버튼은 다른 브랜드로 읽힌다.
+ *   2. 그림자는 쓰지 않는다. 깊이는 1px hairline 과 컬러블록이 만든다.
+ *   3. 색은 토큰 목록 밖으로 나가지 않는다.
+ */
+
+/* ==================================================================== */
+/* 컬러블록                                                              */
+/* ==================================================================== */
+
+/*
+ * 컬러블록은 **화면이 사용자에게 말을 거는 순간**에만 쓴다. 데이터를 보여주기만
+ * 하는 영역(목록·행·그리드)은 흰 캔버스다.
+ *
+ * `--bleed` 는 768px 미만에서만 0 이 아니다. 그때 블록은 거터를 밀어내고
+ * 뷰포트 끝까지 흘러 포스터처럼 읽힌다.
+ */
+:root {
+  --bleed: 0px;
+}
+
+.block {
+  padding: var(--space-block);
+  border-radius: var(--radius-block);
+  border: 1px solid transparent;
+  margin-inline: calc(-1 * var(--bleed));
+  color: var(--color-ink);
+}
+
+.block--form {
+  background: var(--color-block-lilac);
+}
+
+.block--alert {
+  background: var(--color-block-coral);
+}
+
+.block--ok {
+  background: var(--color-block-lime);
+}
+
+.block--empty {
+  background: var(--color-block-cream);
+}
+
+.block--summary {
+  background: var(--color-block-mint);
+}
+
+/* 유일한 다크 표면. 차별화 서사에만 쓴다 */
+.block--navy {
+  background: var(--color-block-navy);
+  color: var(--color-inverse-ink);
+}
+
+/*
+ * 중첩된 블록(폼 안의 에러 배너 등)은 풀블리드하지 않고 패딩도 줄인다.
+ * 48px 안에 48px 을 또 넣으면 카피가 가운데 점처럼 남는다.
+ */
+.block .block,
+.card .block {
+  margin-inline: 0;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-lg);
+}
+
+/* navy 블록 안의 eyebrow → headline → subhead 세로 리듬 */
+.block .eyebrow + h3,
+.block .eyebrow + .headline {
+  margin-top: var(--space-sm);
+}
+
+.block .headline + .subhead {
+  margin-top: var(--space-md);
+  max-width: 62ch;
+}
+
+/* 26px 본문 안의 인라인 코드가 12px 이면 읽히지 않는다 */
+.subhead code {
+  font-size: 0.78em;
+  letter-spacing: 0;
+}
+
+/*
+ * **한 뷰포트에 컬러블록 하나.** 둘이 보이면 둘 다 죽는다.
+ *
+ * 우선순위: alert > ok > empty > (form · summary). 에러가 뜨면 나머지는 흰 캔버스로
+ * 내려간다 — 그 순간 사용자가 알아야 할 것은 그것뿐이다.
+ *
+ * JS 로 분기하지 않고 `:has()` 로 처리한다. 조건부 렌더 로직을 건드리지 않으므로
+ * 어떤 블록이 언제 그려지는지는 기능 코드가 그대로 결정한다.
+ */
+.page:has(.block--alert) .block:not(.block--alert),
+.page:has(.block--ok):not(:has(.block--alert)) .block:not(.block--ok),
+.page:has(.block--empty):not(:has(.block--alert)):not(:has(.block--ok))
+  .block:not(.block--empty) {
+  background: var(--color-canvas);
+  border-color: var(--color-hairline);
+  color: var(--color-ink);
+}
+
+/* 블록 내부 구성: mono eyebrow → headline → subhead */
+.block__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+/* ==================================================================== */
+/* 카드                                                                  */
+/* ==================================================================== */
+
+.card {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+/* 블록·카드 안 제목과 본문 사이 리듬 */
+.block > h3,
+.card > h3 {
+  margin-bottom: var(--space-md);
+}
+
+/* ==================================================================== */
+/* 버튼                                                                  */
+/* ==================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: var(--tap-min);
+  padding: 8px 18px 10px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+  font-size: var(--fs-link);
+  font-weight: var(--weight-link);
+  line-height: var(--lh-link);
+  letter-spacing: var(--ls-link);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/*
+ * 스펙의 `button-secondary` 는 배경이 canvas 다. 흰 지면 위에서는 테두리도 배경도
+ * 없는 pill 이 되어 "누를 수 있는 것"으로 읽히지 않는데, 이 화면은 행마다 조작
+ * 버튼이 셋씩 붙는 관리 화면이다. surface-soft 로 한 단계만 띄운다.
+ */
+.btn:hover:not(:disabled) {
+  background: var(--color-hairline);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible,
+.tab:focus-visible,
+.banner__close:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/*
+ * 목록 행 안의 조작 버튼. 스펙의 button 타이포(20px)를 그대로 쓰면 상품 7열·주문 8열
+ * 테이블이 1280px 에서 가로로 넘친다 — 가로 스크롤은 이 디자인이 금지하는 것이다.
+ * 크기만 낮추고 pill·웨이트·표면은 유지한다.
+ */
+.btn--sm {
+  min-height: 40px;
+  padding: 6px 14px 8px;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  letter-spacing: var(--ls-body-sm);
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-primary);
+  opacity: 0.85;
+}
+
+/*
+ * 파괴적 조작(삭제 · 주문 취소)에 coral 을 쓴다. 이 시스템에는 danger 색이 없고
+ * 위계는 색상(hue)이 아니라 채움(fill)으로 표현되지만, 관리 화면에서 삭제 버튼이
+ * 조회 버튼과 같은 표면인 것은 사고를 부른다. coral 은 "거부·실패" 계열이고
+ * 삭제는 그 계열의 조작이라 의미가 어긋나지 않는다.
+ */
+.btn--danger {
+  background: var(--color-block-coral);
+  color: var(--color-ink);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--color-block-coral);
+  opacity: 0.82;
+}
+
+/* 코랄 블록 위의 재시도 버튼. 블록 안에서는 검정이 프라이머리다 */
+.btn--retry {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.btn--retry:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+/* ==================================================================== */
+/* 폼                                                                    */
+/* ==================================================================== */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  /* 1단으로 접히면 폼이 뷰포트 전폭이 된다. 한 줄 입력이 900px 이면 읽을 수 없다 */
+  max-width: 720px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: var(--fs-body-lg);
+  font-weight: var(--weight-body-sm);
+  line-height: var(--lh-body-lg);
+  letter-spacing: var(--ls-body-lg);
+}
+
+.form input,
+.form select,
+.line select,
+.line__qty,
+.inline-field select {
+  min-height: var(--tap-min);
+  padding: 12px 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  /* iOS Safari 는 16px 미만 입력에 포커스하면 화면을 확대한다 */
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body-sm);
+  letter-spacing: var(--ls-body-sm);
+}
+
+/* 포커스는 링으로 표현한다. 배경색을 바꾸지 않는다 */
+.form input:focus-visible,
+.form select:focus-visible,
+.line select:focus-visible,
+.line__qty:focus-visible,
+.inline-field select:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.form input:disabled {
+  background: var(--color-surface-soft);
+  opacity: 0.6;
+}
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body-sm);
+  white-space: nowrap;
+}
+
+.inline-field select {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+/* 짧은 설명문. 위계는 웨이트로 만든다 — 회색으로 눌러 두지 않는다 */
+.note {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body);
+  line-height: var(--lh-body-sm);
+  letter-spacing: var(--ls-body-sm);
+}
+
+.note--warn {
+  font-weight: var(--weight-headline);
+  border-left: 3px solid var(--color-ink);
+  padding-left: var(--space-sm);
+}
+
+/* ------------------------------------------------------- 주문 항목 줄 */
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+}
+
+.lines__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-mono);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: var(--ls-caption);
+  text-transform: uppercase;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.line select {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.line__qty {
+  width: 88px;
+  flex: 0 0 auto;
+}
+
+.line__subtotal {
+  min-width: 110px;
+  text-align: right;
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-headline);
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-ink);
+  font-size: var(--fs-body-lg);
+  font-weight: var(--weight-body-sm);
+}
+
+.total strong {
+  font-size: var(--fs-headline);
+  font-weight: var(--weight-headline);
+  letter-spacing: var(--ls-headline);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================================================================== */
+/* 테이블                                                                */
+/* ==================================================================== */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-canvas);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body-sm);
+  line-height: var(--lh-body-sm);
+  letter-spacing: var(--ls-body-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-sm) var(--space-xs);
+  border-bottom: 1px solid var(--color-hairline-soft);
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* 컬럼 헤드는 mono 대문자 — 분류 표시다 */
+.table th {
+  border-bottom: 1px solid var(--color-ink);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-mono);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: var(--ls-caption);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr.is-selected {
+  background: var(--color-surface-soft);
+}
+
+.table--compact th,
+.table--compact td {
+  padding: var(--space-xs);
+}
+
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th.num {
+  text-align: right;
+}
+
+.strong {
+  font-weight: var(--weight-headline);
+}
+
+/* 컬러블록 안의 표는 블록 색 위에 그대로 얹는다. 흰 판을 깔면 블록이 액자가 된다 */
+.block .table {
+  background: transparent;
+}
+
+/* 회색이 아니라 가벼운 웨이트로 낮춘다 */
+.muted {
+  font-weight: var(--weight-body);
+}
+
+/*
+ * 조작 열은 폭을 강제하지 않는다. `width: 1%` + `nowrap` 으로 고정하면 열의
+ * min-content 가 버튼 세 개의 합이 되어 테이블이 카드 밖으로 밀려난다.
+ * 자동 레이아웃에 맡기면 자리가 있을 때는 한 줄, 없으면 접힌다 —
+ * 어느 쪽이든 가로 스크롤은 생기지 않는다.
+ */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+
+/*
+ * 접혔을 때 버튼이 들쭉날쭉하지 않도록 셀 폭을 나눠 갖는다. 한 줄에 들어가면
+ * 나란히, 안 들어가면 각자 한 줄을 차지하는 정돈된 스택이 된다.
+ */
+.actions .btn {
+  flex: 1 1 auto;
+}
+
+.table td.actions,
+.table th:last-child {
+  text-align: right;
+}
+
+/* ==================================================================== */
+/* 배지                                                                  */
+/* ==================================================================== */
+
+/*
+ * 상태·코드 배지는 mono 대문자 검정 칩이다. 어떤 배경 위에 놓여도 읽히고,
+ * 컬러블록 색과 겹쳐 사라지는 일이 없다.
+ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-mono);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: var(--ls-caption);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge--canceled {
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+}
+
+/* 금액·수량은 mono 대문자가 아니라 표 안의 값이다 */
+.badge--point,
+.badge--warn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body-sm);
+  letter-spacing: var(--ls-body-sm);
+  text-transform: none;
+  color: var(--color-ink);
+}
+
+/* 포인트 잔액은 컨텍스트다 — mint */
+.badge--point {
+  background: var(--color-block-mint);
+}
+
+/* 재고 부족은 OUT_OF_STOCK 거부를 예고한다 — coral */
+.badge--warn {
+  background: var(--color-block-coral);
+}
+
+/* ==================================================================== */
+/* 배너 — 이 프로젝트 컬러블록의 주 무대                                  */
+/* ==================================================================== */
+
+/*
+ * 서버가 규칙을 발동시킨 순간이다. 코드 배지로 **어떤 규칙**인지 분류하고,
+ * 서버 원문 메시지를 그대로 실어 **구체 수치**를 증거로 남긴다.
+ * 프론트가 고정 문구로 덮으면 "포인트가 얼마 모자랐는지"가 사라진다.
+ */
+.banner__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.banner__title {
+  font-size: var(--fs-headline);
+  font-weight: var(--weight-headline);
+  line-height: var(--lh-headline);
+  letter-spacing: var(--ls-headline);
+}
+
+.banner__status {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-mono);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: var(--ls-caption);
+}
+
+.banner__close {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  flex: 0 0 auto;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+  font-size: var(--fs-body-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.banner__close:hover {
+  background: var(--color-hairline);
+}
+
+/* 서버 원문 메시지. 블록 안에서 가장 크게 읽히는 문장이다 */
+.banner__message {
+  font-size: var(--fs-subhead);
+  font-weight: var(--weight-display);
+  line-height: var(--lh-subhead);
+  letter-spacing: var(--ls-subhead);
+  max-width: 60ch;
+}
+
+.banner p {
+  max-width: 68ch;
+}
+
+.banner p + p {
+  margin-top: var(--space-xs);
+}
+
+.banner__fields {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  margin-top: var(--space-sm);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body-sm);
+}
+
+.banner__hint {
+  margin-top: var(--space-sm);
+  font-size: var(--fs-body);
+  font-weight: var(--weight-body);
+  max-width: 60ch;
+}
+
+.banner__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.banner__actions .banner__hint {
+  margin-top: 0;
+}
+
+.refund {
+  font-size: var(--fs-body-lg);
+  font-weight: var(--weight-body-sm);
+  line-height: var(--lh-body-lg);
+}
+
+/* 성공 블록 안의 mono 캡션(시각 등)은 본문보다 한 단계 아래다 */
+.banner .muted {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body);
+}
+
+/* ==================================================================== */
+/* 상태 (로딩 · 빈 상태)                                                 */
+/* ==================================================================== */
+
+.state {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-mono);
+  font-size: var(--fs-eyebrow);
+  line-height: var(--lh-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+}
+
+/* 로딩은 색을 쓰지 않는다. 잠깐 스쳐 가는 상태에 색을 배정하면 리듬이 흔들린다 */
+.state--loading {
+  padding: var(--space-xl) 0;
+}
+
+/*
+ * 빈 상태는 화면이 말을 거는 순간이다 — cream 블록.
+ * 대문자 mono 로 두면 안내문이 읽히지 않아 여기서만 sans 로 되돌린다.
+ */
+.state--empty {
+  font-family: var(--font-sans);
+  font-size: var(--fs-subhead);
+  font-weight: var(--weight-display);
+  line-height: var(--lh-subhead);
+  letter-spacing: var(--ls-subhead);
+  text-transform: none;
+  max-width: 46ch;
+}
+
+/* ==================================================================== */
+/* 상세 (정의 목록)                                                      */
+/* ==================================================================== */
+
+.detail {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.detail dt {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-mono);
+  font-size: var(--fs-caption);
+  line-height: 1.6;
+  letter-spacing: var(--ls-caption);
+  text-transform: uppercase;
+}
+
+/* 이메일·URL 처럼 공백이 없는 값은 예외적으로 아무 데서나 접는다 */
+.detail dd {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-body-sm);
+  line-height: var(--lh-body-sm);
+  overflow-wrap: anywhere;
+}

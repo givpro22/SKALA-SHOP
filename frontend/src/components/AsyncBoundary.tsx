@@ -25,12 +25,21 @@ export function AsyncBoundary<T>({ state, isEmpty, emptyMessage, children }: Pro
     return <ErrorBanner error={state.error} onRetry={state.reload} />;
   }
 
+  // 빈 상태는 화면이 사용자에게 말을 거는 순간이다 — cream 컬러블록.
   if (state.data === null) {
-    return <p className="state state--empty">{emptyMessage ?? '표시할 내용이 없습니다.'}</p>;
+    return (
+      <p className="state state--empty block block--empty">
+        {emptyMessage ?? '표시할 내용이 없습니다.'}
+      </p>
+    );
   }
 
   if (isEmpty !== undefined && isEmpty(state.data)) {
-    return <p className="state state--empty">{emptyMessage ?? '데이터가 없습니다.'}</p>;
+    return (
+      <p className="state state--empty block block--empty">
+        {emptyMessage ?? '데이터가 없습니다.'}
+      </p>
+    );
   }
 
   return <>{children(state.data)}</>;
