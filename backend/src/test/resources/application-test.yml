@@ -1,0 +1,23 @@
+# 동시성 테스트 전용. local 시드(@Profile("local"))가 실행되지 않아야 각 테스트가
+# 자기 픽스처만 가지고 시작한다.
+spring:
+  datasource:
+    url: jdbc:h2:mem:skalashop-test;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    root: WARN
+    shop: INFO

@@ -11,7 +11,9 @@ import shop.dto.ProductCreateRequest;
 import shop.dto.ProductResponse;
 import shop.dto.ProductUpdateRequest;
 import shop.exception.DuplicateProductNameException;
+import shop.exception.ProductInUseException;
 import shop.exception.ProductNotFoundException;
+import shop.repository.OrderItemRepository;
 import shop.repository.ProductRepository;
 
 /**
@@ -29,6 +31,7 @@ import shop.repository.ProductRepository;
 public class ProductService {
 
 	private final ProductRepository productRepository;
+	private final OrderItemRepository orderItemRepository;
 
 	@Transactional
 	public ProductResponse create(ProductCreateRequest request) {
@@ -67,11 +70,18 @@ public class ProductService {
 		return ProductResponse.from(product);
 	}
 
+	/**
+	 * BR-17. 주문에 참조된 상품은 삭제할 수 없다.
+	 *
+	 * <p>참조 검사에 {@code status} 조건을 붙이지 않는다 — <b>취소된 주문의 라인도 참조로 센다.</b>
+	 * 주문 이력은 보존 대상이고, 참조 상품이 사라지면 이력이 깨진다.
+	 */
 	@Transactional
 	public void delete(Long id) {
 		Product product = getProductOrThrow(id);
-		// TODO(#6): OrderItem 도입 후 참조 검사를 추가한다 — 참조가 있으면 ProductInUseException(BR-17).
-		//           취소된 주문의 라인도 참조로 센다.
+		if (orderItemRepository.existsByProductId(id)) {
+			throw new ProductInUseException(id);
+		}
 		productRepository.delete(product);
 	}
 

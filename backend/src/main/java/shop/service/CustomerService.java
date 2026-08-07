@@ -11,9 +11,11 @@ import shop.dto.CustomerCreateRequest;
 import shop.dto.CustomerResponse;
 import shop.dto.CustomerUpdateRequest;
 import shop.dto.PointChargeRequest;
+import shop.exception.CustomerHasOrdersException;
 import shop.exception.CustomerNotFoundException;
 import shop.exception.DuplicateEmailException;
 import shop.repository.CustomerRepository;
+import shop.repository.OrderRepository;
 
 /**
  * 고객 비즈니스 로직. 클래스에 {@code readOnly = true}, 쓰기 메서드에만 {@code @Transactional}.
@@ -24,6 +26,7 @@ import shop.repository.CustomerRepository;
 public class CustomerService {
 
 	private final CustomerRepository customerRepository;
+	private final OrderRepository orderRepository;
 
 	@Transactional
 	public CustomerResponse create(CustomerCreateRequest request) {
@@ -58,11 +61,17 @@ public class CustomerService {
 		return CustomerResponse.from(customer);
 	}
 
+	/**
+	 * BR-18. 주문 이력이 있는 고객은 삭제할 수 없다.
+	 *
+	 * <p>{@code status} 조건을 붙이지 않는다 — <b>취소된 주문도 이력으로 센다</b>(스펙 §2.3).
+	 */
 	@Transactional
 	public void delete(Long id) {
 		Customer customer = getCustomerOrThrow(id);
-		// TODO(#6): Order 도입 후 주문 이력 검사를 추가한다 — 1건이라도 있으면
-		//           CustomerHasOrdersException(BR-18). 취소된 주문도 이력으로 센다.
+		if (orderRepository.existsByCustomerId(id)) {
+			throw new CustomerHasOrdersException(id);
+		}
 		customerRepository.delete(customer);
 	}
 
