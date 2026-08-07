@@ -1,0 +1,25 @@
+# Claude Code 하네스 (커밋 제외)
+.claude/
+CLAUDE.md
+_workspace/
+_workspace_*/
+
+# Java / Gradle
+build/
+.gradle/
+*.log
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# 환경 변수
+.env
+.env.local
