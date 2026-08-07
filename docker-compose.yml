@@ -25,6 +25,13 @@ services:
       context: ./backend
     container_name: skala-shop-backend
     environment:
+      # LocalDateTime.now()는 JVM 기본 타임존을 따르는데, 컨테이너에 TZ가 없으면 UTC로 뜬다.
+      # 그러면 createdAt·orderedAt·canceledAt이 전부 9시간 과거의 벽시계로 저장된다.
+      # application.yml의 spring.jackson.time-zone은 이걸 막지 못한다 —
+      # 그 설정은 java.util.Date 계열 전용이라 LocalDateTime에는 영향이 없다.
+      # 계약 §0이 날짜를 오프셋 없는 형식으로 못 박아서 클라이언트가 보정할 수도 없다.
+      # -Duser.timezone 대신 TZ를 쓰는 이유는 컨테이너 로그 타임스탬프까지 함께 맞추기 때문이다.
+      TZ: Asia/Seoul
       # 이걸 빼면 컨테이너가 H2 인메모리로 뜬다. 겉보기엔 정상 동작하므로
       # 재기동마다 데이터가 사라지는 것을 늦게 발견한다.
       SPRING_PROFILES_ACTIVE: prod
