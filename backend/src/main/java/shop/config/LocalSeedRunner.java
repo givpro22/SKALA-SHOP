@@ -13,13 +13,17 @@ import org.springframework.transaction.support.TransactionTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import shop.domain.Customer;
 import shop.domain.Product;
+import shop.domain.User;
 import shop.dto.OrderCreateRequest;
 import shop.dto.OrderItemRequest;
 import shop.dto.OrderResponse;
 import shop.repository.CustomerRepository;
 import shop.repository.ProductRepository;
+import shop.repository.UserRepository;
 import shop.service.OrderService;
 
 /**
@@ -54,6 +58,8 @@ public class LocalSeedRunner implements CommandLineRunner {
 	private final ProductRepository productRepository;
 	private final CustomerRepository customerRepository;
 	private final OrderService orderService;
+	private final UserRepository userRepository;
+	private final PasswordEncoder passwordEncoder;
 	private final TransactionTemplate transactionTemplate;
 
 	@PersistenceContext
@@ -67,7 +73,9 @@ public class LocalSeedRunner implements CommandLineRunner {
 		seedProducts();
 		seedCustomers();
 		seedOrders();
-		log.info("local 시드 완료 - 상품 {}건, 고객 {}건", productRepository.count(), customerRepository.count());
+		seedUsers();
+		log.info("local 시드 완료 - 상품 {}건, 고객 {}건, 계정 {}건",
+				productRepository.count(), customerRepository.count(), userRepository.count());
 	}
 
 	/**
@@ -85,6 +93,17 @@ public class LocalSeedRunner implements CommandLineRunner {
 				// 캡처 09 — 낙관적 락 재현용. 재고를 100으로 크게 둔 것은 의도다(§6.6):
 				// OUT_OF_STOCK이 발생할 수 없으므로 "실패했다면 그것은 락이다"가 참이 된다.
 				Product.create("한정판 키캡 세트", "PBT 이중사출", 12_000, 100, "/products/keycap.svg")));
+	}
+
+	/**
+	 * 운영자 계정. 캡처 "로그인 성공"과 "토큰 없이 쓰기 거부"를 재현하려면 계정이 하나는 있어야 한다.
+	 *
+	 * <p>비밀번호는 시드에서도 <b>인코딩해서</b> 넣는다. 평문을 넣으면 로그인 시
+	 * {@code passwordEncoder.matches} 가 항상 false 라, 계정은 보이는데 로그인만 안 되는
+	 * 상태가 된다 — 원인을 찾기 가장 어려운 부류다.
+	 */
+	private void seedUsers() {
+		userRepository.save(User.create("admin@skala.shop", passwordEncoder.encode("skala1234")));
 	}
 
 	private void seedCustomers() {

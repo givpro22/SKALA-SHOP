@@ -48,3 +48,11 @@ server:
     encoding:
       charset: UTF-8
       force: true
+
+# ---------------------------------------------------------------- JWT
+#
+# 비밀키를 하드코딩하지 않는다. 값이 이미지에 박히면 배포본에서 토큰 위조가 가능해진다.
+# local 기본값은 개발 편의용이며, prod 는 반드시 환경변수로 주입한다(ProdEnvironmentGuard 가 확인).
+jwt:
+  secret: ${JWT_SECRET:skala-shop-local-dev-secret-key-please-change-in-prod}
+  expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}

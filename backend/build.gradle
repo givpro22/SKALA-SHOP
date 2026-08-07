@@ -27,6 +27,14 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// JWT 발급·검증. jjwt 는 api/impl/jackson 세 조각으로 나뉘어 있고, impl 과 jackson 은
+	// 런타임에만 필요하다. 컴파일 의존을 api 로 좁혀 두면 구현 클래스를 직접 참조하는
+	// 코드가 실수로 들어오는 것을 컴파일 단계에서 막을 수 있다.
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
 	// Swagger UI(/swagger-ui.html) + OpenAPI 스펙(/v3/api-docs) 자동 생성.
 	// Spring Boot 3.x / Jakarta EE 10 계열은 springdoc 2.x를 쓴다. 3.x는 Boot 4 전용이다.
@@ -39,6 +47,7 @@ dependencies {
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

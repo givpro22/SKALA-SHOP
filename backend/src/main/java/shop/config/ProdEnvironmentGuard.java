@@ -27,14 +27,25 @@ public class ProdEnvironmentGuard {
 
 	public ProdEnvironmentGuard(@Value("${DB_URL}") String dbUrl,
 			@Value("${DB_USERNAME}") String dbUsername,
-			@Value("${DB_PASSWORD}") String dbPassword) {
+			@Value("${DB_PASSWORD}") String dbPassword,
+			@Value("${JWT_SECRET}") String jwtSecret) {
 
 		if (dbUrl.isBlank() || dbUsername.isBlank()) {
 			throw new IllegalStateException(
 					"prod 프로파일에는 DB_URL, DB_USERNAME이 비어 있지 않은 값으로 필요합니다.");
 		}
+		/*
+		 * JWT_SECRET 을 여기서 한 번 더 막는 이유: application.yml 에 local 기본값이 있어
+		 * 주입하지 않아도 기동이 된다. 그러면 **개발용 비밀키로 서명한 토큰이 배포본에서
+		 * 통용된다** — 소스를 본 사람이면 누구나 토큰을 위조할 수 있다.
+		 * 기본값이 있는 설정일수록 prod 에서는 명시적으로 요구해야 한다.
+		 */
+		if (jwtSecret.isBlank() || jwtSecret.contains("local-dev")) {
+			throw new IllegalStateException(
+					"prod 프로파일에는 JWT_SECRET을 별도로 주입해야 합니다. (개발 기본값 사용 불가)");
+		}
 		// 비밀번호는 길이만 남긴다. 값을 로그에 남기면 컨테이너 로그 수집기로 그대로 흘러간다.
-		log.info("prod 데이터소스 확인 - url={}, username={}, password={}자",
-				dbUrl, dbUsername, dbPassword.length());
+		log.info("prod 데이터소스 확인 - url={}, username={}, password={}자, jwtSecret={}자",
+				dbUrl, dbUsername, dbPassword.length(), jwtSecret.length());
 	}
 }

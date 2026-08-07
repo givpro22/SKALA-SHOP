@@ -27,8 +27,19 @@ public enum ErrorCode {
 
 	METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식입니다."),
 
+	/*
+	 * 인증 실패 셋(계약 §8.4).
+	 *
+	 * INVALID_CREDENTIALS 는 아이디가 없을 때와 비밀번호가 틀렸을 때를 **구분하지 않는다.**
+	 * 구분하면 "이 아이디는 존재한다"가 응답으로 새어 나가 계정 열거에 쓰인다.
+	 */
+	INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."),
+	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
+	TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인이 만료되었습니다. 다시 로그인해 주세요."),
+
 	DUPLICATE_PRODUCT_NAME(HttpStatus.CONFLICT, "이미 존재하는 상품명입니다."),
 	DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 존재하는 이메일입니다."),
+	DUPLICATE_USERNAME(HttpStatus.CONFLICT, "이미 존재하는 계정 아이디입니다."),
 	PRODUCT_IN_USE(HttpStatus.CONFLICT, "주문에 사용된 상품은 삭제할 수 없습니다."),
 	CUSTOMER_HAS_ORDERS(HttpStatus.CONFLICT, "주문 이력이 있는 고객은 삭제할 수 없습니다."),
 	// 어느 엔티티에서 충돌했는지 노출하지 않는다(계약 §5.1).
