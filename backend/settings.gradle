@@ -1,1 +1,12 @@
+// JDK 21이 설치되지 않은 머신에서도 빌드되게 한다.
+//
+// build.gradle 은 toolchain 21 을 요구하는데, Gradle 은 기본적으로 로컬에 설치된 JDK 만
+// 탐색하고 없으면 빌드를 실패시킨다. 이 플러그인이 붙으면 Gradle 이 JDK 21 을 직접 받아
+// **Gradle 캐시 안에서만** 쓴다 — 시스템 자바 설정은 건드리지 않는다.
+//
+// 개발자마다 JDK 를 맞추라고 문서에 적는 대신 빌드가 스스로 맞추게 한다.
+plugins {
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
 rootProject.name = 'skala-shop'
