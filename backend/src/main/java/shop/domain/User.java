@@ -2,6 +2,7 @@ package shop.domain;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.ColumnDefault;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -65,8 +66,31 @@ public class User {
 	 *
 	 * <p>이 컬럼이 없으면 <b>구매자 계정의 토큰으로 {@code DELETE /api/products/1} 이 통과한다.</b>
 	 * 구매 흐름을 여는 것은 로그인 계정의 성격이 둘로 갈라지는 것이라, 역할 없이는 열 수 없다.
+	 *
+	 * <h3>{@code @ColumnDefault} 는 장식이 아니라 마이그레이션 안전장치다</h3>
+	 *
+	 * <p>이 컬럼은 <b>나중에 추가됐다.</b> 이미 계정이 있는 DB 에 {@code ddl-auto=update} 로 올리면
+	 * Hibernate 가 {@code ALTER TABLE ... ADD COLUMN role ... NOT NULL} 을 내는데, {@code DEFAULT} 가
+	 * 없으면 MySQL 이 타입의 implicit default(= {@code ENUM} 의 첫 값)를 채운다. 그 결과
+	 * <b>기존 계정 전원이 {@code ADMIN} 으로 승격됐다</b> — 실제 prod DB 에서 관측된 결함이며
+	 * 근거는 {@link UserRole} 주석에 있다.
+	 *
+	 * <p>{@code DEFAULT} 를 명시하면 그 상황에서 기존 행이 {@code SHOPPER} 로 채워진다.
+	 *
+	 * <p><b>이것이 유일한 방어다.</b> {@link UserRole} 의 선언 순서를 바꿔 implicit default 를
+	 * 안전한 쪽으로 돌리는 방법은 <b>통하지 않는다</b> — Hibernate 가 네이티브 {@code enum} 타입을
+	 * 알파벳 순으로 생성해 {@code ADMIN} 이 항상 앞에 오기 때문이며, 생성 DDL 을 뽑아 확인했다.
+	 * 근거는 {@link UserRole} 주석에 있다.
+	 *
+	 * <p>이 애너테이션이 <b>실제 DDL 에 반영되는지</b>는 {@code UserRoleSchemaDefaultTest} 가
+	 * MySQL 방언으로 스키마를 생성해 확인한다. 애너테이션의 존재만 확인하면 매핑이 바뀌어
+	 * 무시되는 경우를 놓친다.
+	 *
+	 * <p><b>애플리케이션 경로에는 영향이 없다</b> — {@link #create}/{@link #createAdmin} 이 항상 값을
+	 * 넣으므로 이 기본값이 실제로 쓰이는 것은 스키마 마이그레이션 시점뿐이다.
 	 */
 	@Enumerated(EnumType.STRING)
+	@ColumnDefault("'SHOPPER'")
 	@Column(nullable = false, length = 20)
 	private UserRole role;
 
