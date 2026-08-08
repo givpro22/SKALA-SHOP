@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,8 @@ public class OrderController {
 					항목 중복 → 고객 존재 → 상품 존재 → 재고 → 포인트. \
 					**재고와 포인트가 동시에 부족하면 OUT_OF_STOCK이 반환된다.**
 
-					동시 요청으로 재고/포인트 갱신이 충돌하면 409를 반환하며, 이때 어떤 변경도 반영되지 않는다.""")
+					동시 요청으로 재고/포인트 갱신이 충돌하면 409를 반환하며, 이때 어떤 변경도 반영되지 않는다.""",
+			security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponses({
 			@ApiResponse(responseCode = "201", description = "주문 생성됨"),
 			@ApiResponse(responseCode = "400",
@@ -53,6 +55,10 @@ public class OrderController {
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
 			@ApiResponse(responseCode = "409",
 					description = "CONCURRENT_UPDATE — 동시 요청으로 재고/포인트 갱신이 충돌했다. 어떤 변경도 반영되지 않았다",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "401", description = "UNAUTHORIZED / TOKEN_EXPIRED",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "403", description = "FORBIDDEN — 토큰은 유효하나 ADMIN이 아니다",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
 	})
 	@PostMapping
@@ -102,7 +108,8 @@ public class OrderController {
 					**이미 취소된 주문을 다시 취소하면 400 ALREADY_CANCELED로 거부한다.** \
 					허용하면 환급이 두 번 일어나 포인트가 증식한다. 상태 검사는 재고·포인트를 건드리기 전에 한다.
 
-					동시 요청으로 갱신이 충돌하면 409를 반환하며, 이때 취소는 전혀 반영되지 않고 주문은 ORDERED로 남는다.""")
+					동시 요청으로 갱신이 충돌하면 409를 반환하며, 이때 취소는 전혀 반영되지 않고 주문은 ORDERED로 남는다.""",
+			security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "취소됨"),
 			@ApiResponse(responseCode = "400", description = "ALREADY_CANCELED / TYPE_MISMATCH",
@@ -111,6 +118,10 @@ public class OrderController {
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
 			@ApiResponse(responseCode = "409",
 					description = "CONCURRENT_UPDATE — 어떤 변경도 반영되지 않았고 주문은 ORDERED로 남는다",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "401", description = "UNAUTHORIZED / TOKEN_EXPIRED",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "403", description = "FORBIDDEN — 토큰은 유효하나 ADMIN이 아니다",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
 	})
 	@PostMapping("/{id}/cancel")

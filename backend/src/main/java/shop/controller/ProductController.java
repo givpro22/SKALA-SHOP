@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,12 +43,17 @@ public class ProductController {
 
 	@Operation(summary = "상품 등록",
 			description = "상품을 등록한다. 상품명이 이미 존재하면 409로 거부한다(BR-16). "
-					+ "성공 시 Location 헤더에 생성된 리소스 경로를 담는다.")
+					+ "성공 시 Location 헤더에 생성된 리소스 경로를 담는다.",
+			security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponses({
 			@ApiResponse(responseCode = "201", description = "등록됨"),
 			@ApiResponse(responseCode = "400", description = "VALIDATION_ERROR",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
 			@ApiResponse(responseCode = "409", description = "DUPLICATE_PRODUCT_NAME",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "401", description = "UNAUTHORIZED / TOKEN_EXPIRED",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "403", description = "FORBIDDEN — 토큰은 유효하나 ADMIN이 아니다",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
 	})
 	@PostMapping
@@ -83,7 +89,8 @@ public class ProductController {
 	@Operation(summary = "상품 수정",
 			description = "전체 교체(PUT) 시맨틱이다. description을 생략하면 null로 덮어쓴다. "
 					+ "여기서 바꾼 가격·재고는 기존 주문에 소급되지 않는다(BR-12). "
-					+ "동시 요청으로 같은 상품 행의 갱신이 충돌하면 409를 반환하며, 이때 어떤 변경도 반영되지 않는다.")
+					+ "동시 요청으로 같은 상품 행의 갱신이 충돌하면 409를 반환하며, 이때 어떤 변경도 반영되지 않는다.",
+			security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "수정됨"),
 			@ApiResponse(responseCode = "400", description = "VALIDATION_ERROR / TYPE_MISMATCH",
@@ -91,6 +98,10 @@ public class ProductController {
 			@ApiResponse(responseCode = "404", description = "PRODUCT_NOT_FOUND",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
 			@ApiResponse(responseCode = "409", description = "DUPLICATE_PRODUCT_NAME / CONCURRENT_UPDATE",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "401", description = "UNAUTHORIZED / TOKEN_EXPIRED",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "403", description = "FORBIDDEN — 토큰은 유효하나 ADMIN이 아니다",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
 	})
 	@PutMapping("/{id}")
@@ -102,7 +113,8 @@ public class ProductController {
 
 	@Operation(summary = "상품 삭제",
 			description = "주문에 참조된 상품은 삭제할 수 없다(BR-17). 취소된 주문의 라인도 참조로 센다. "
-					+ "성공 시 204이며 본문이 없다.")
+					+ "성공 시 204이며 본문이 없다.",
+			security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponses({
 			@ApiResponse(responseCode = "204", description = "삭제됨 (본문 없음)"),
 			@ApiResponse(responseCode = "400", description = "TYPE_MISMATCH",
@@ -110,6 +122,10 @@ public class ProductController {
 			@ApiResponse(responseCode = "404", description = "PRODUCT_NOT_FOUND",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
 			@ApiResponse(responseCode = "409", description = "PRODUCT_IN_USE",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "401", description = "UNAUTHORIZED / TOKEN_EXPIRED",
+					content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+			@ApiResponse(responseCode = "403", description = "FORBIDDEN — 토큰은 유효하나 ADMIN이 아니다",
 					content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
 	})
 	@DeleteMapping("/{id}")
