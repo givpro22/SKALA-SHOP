@@ -192,7 +192,12 @@ export function CartPage({ cart, onCartChanged, onGoCheckout }: Props) {
               </div>
 
               <aside className="layout__side">
-                <div className="block block--form">
+                {/*
+                  mint(컨텍스트 요약)다. 주문서의 결제 정보와 같은 lilac 을 쓰면 두 화면이
+                  같은 보라 패널로 보여 탭을 넘어간 것이 드러나지 않는다.
+                  구매 흐름의 색 진행: mint(담긴 것) → lilac(결제 결정) → lime(완료).
+                */}
+                <div className="block block--summary">
                   <h3>결제 예정 금액</h3>
                   <dl className="detail">
                     <dt>담긴 상품</dt>

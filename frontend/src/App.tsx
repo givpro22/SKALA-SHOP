@@ -93,7 +93,7 @@ export default function App() {
             */}
             {!role.isAdmin && (
               <span className="badge" title="조회만 가능합니다">
-                　읽기 전용
+                읽기 전용
               </span>
             )}
           </button>

@@ -127,7 +127,11 @@ export function StorefrontPage({ cart, canBuy, onCartChanged }: Props) {
           </select>
         </label>
         <div className="form__actions">
-          <button type="submit" className="btn btn--primary">
+          {/*
+            프라이머리가 아니다. 이 페이지의 결정은 "담는 것"이고 검색은 목록을 좁히는
+            도구다. 검정 필을 여기에 두면 그 무게가 결정에서 필터로 옮겨간다.
+          */}
+          <button type="submit" className="btn">
             검색
           </button>
           {q !== '' && (
@@ -151,7 +155,7 @@ export function StorefrontPage({ cart, canBuy, onCartChanged }: Props) {
           >
             {(pageData) => (
               <>
-                <p className="caption" data-total-elements={pageData.totalElements}>
+                <p className="listmeta" data-total-elements={pageData.totalElements}>
                   전체 <strong>{pageData.totalElements}</strong>건 · {pageData.page + 1} /{' '}
                   {pageData.totalPages}페이지
                   {q !== '' && <> · 검색어 ‘{q}’</>}
@@ -202,7 +206,7 @@ export function StorefrontPage({ cart, canBuy, onCartChanged }: Props) {
                            */
                           <button
                             type="button"
-                            className="btn btn--sm btn--primary"
+                            className="btn btn--sm btn--outline"
                             disabled={cart.pending}
                             onClick={() =>
                               void addToCart(product.productId, product.name, 1)

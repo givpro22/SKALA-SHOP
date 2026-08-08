@@ -79,7 +79,9 @@ export function MyOrdersPage({ enabled, onOrderChanged }: Props) {
 
                     <span
                       className={
-                        order.status === 'CANCELED' ? 'badge badge--canceled' : 'badge badge--point'
+                        // ORDERED 는 상태 코드다 — 검정 mono 칩. `badge--point` 는 포인트
+                        // 잔액(mint 컨텍스트)에 배정된 색이라 여기 쓰면 의미가 겹친다.
+                        order.status === 'CANCELED' ? 'badge badge--canceled' : 'badge'
                       }
                     >
                       {order.status}

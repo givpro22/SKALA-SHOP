@@ -14,8 +14,8 @@
 
 @media (max-width: 959px) {
   /*
-   * 브랜드 + API 표시가 첫 줄, 탭이 둘째 줄. 햄버거를 만들지 않는다 —
-   * 탭이 셋뿐이라 숨길 이유가 없고, 숨기면 현재 위치가 안 보인다.
+   * 브랜드가 첫 줄, 영역 탭이 마지막 줄. 햄버거를 만들지 않는다 —
+   * 숨기면 현재 위치가 안 보인다.
    */
   .app__head {
     flex-wrap: wrap;
@@ -23,9 +23,28 @@
     padding-bottom: var(--space-md);
   }
 
-  .tabs {
+  /*
+   * **`.tabs` 가 아니라 `.app__head .tabs` 다.**
+   *
+   * 구매 흐름이 들어오면서 `.tabs` 가 둘이 됐다 — 헤더 안의 영역 탭(스토어/관리)과
+   * 헤더 밖의 화면 탭. 선택자가 `.tabs` 이면 후자에도 걸리는데, 그쪽 부모는
+   * `.app`(flex column)이라 `order: 3` 이 **화면 탭 줄을 본문과 푸터 아래로**
+   * 내려보낸다. 390px 에서 실제로 그랬다(측정: 화면 탭 top=6536, 푸터 아래).
+   * 주 내비게이션이 페이지 맨 밑에 있으면 없는 것과 같다.
+   */
+  .app__head .tabs {
     order: 3;
     flex: 1 0 100%;
+  }
+
+  /*
+   * API 표시를 감춘다. 스펙이 "960px 이상: … 우측에 API 표시"라고 폭을 걸어 둔 항목이고,
+   * 좁은 화면에서 이 한 줄이 헤더에 24px(값 12 + 간격 12)을 더한다. 위의 화면 탭 줄을
+   * 제자리로 돌리며 46px 이 늘었으므로 그만큼을 돌려받아야 한다 — 세로 예산의 근거는
+   * tokens.css 의 `--space-section` 주석과 같다.
+   */
+  .app__api {
+    display: none;
   }
 }
 
@@ -45,7 +64,7 @@
 
   /* 상단 여백이 96px 이면 첫 화면이 거의 비어 보인다 */
   .app__body {
-    padding-top: var(--space-xxl);
+    padding-top: var(--space-xl);
   }
 }
 
@@ -75,6 +94,34 @@
  * (고객명이 길어지면 늘어난다), 경계에 딱 맞추면 시드가 바뀔 때마다 다시 깨진다.
  */
 @media (max-width: 599px) {
+  /*
+   * 화면 탭이 넷이 되면서 390px 한 줄에 들어가지 않는다. `.tabs` 는 가로 스크롤
+   * pill 열이므로(스펙) 넘치는 것 자체는 설계대로지만, 넘치는 양이 적을수록
+   * 선택 탭이 보일 확률이 높다. **높이는 건드리지 않는다** — `min-height` 는
+   * 탭 타겟 44px 그대로고 줄어드는 것은 폭뿐이다.
+   */
+  .app > .tabs .tab {
+    padding: 6px 14px 8px;
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    letter-spacing: var(--ls-body-sm);
+  }
+
+  /* 헤더가 4~5줄로 쌓이는 폭이다. 줄 간격 12 → 8 */
+  .app__head {
+    gap: var(--space-xs) var(--space-md);
+  }
+
+  /*
+   * 1단이 된 정의 목록에서는 dt 와 dd 가 각자 한 줄이라, 합계 실선이 위아래로
+   * 두 번 그어진다. 라벨 쪽만 남긴다.
+   */
+  .detail dd.total {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
   .table,
   .table tbody,
   .table tr,

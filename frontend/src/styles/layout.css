@@ -114,6 +114,36 @@
   color: var(--color-on-primary);
 }
 
+/*
+ * 화면 탭 열(`.app > .tabs`)은 헤더 밖에 있는 두 번째 내비다 — 영역(스토어/관리)을
+ * 고른 다음의 하위 탐색이다. 헤더처럼 자기 패딩이 없어 **뷰포트 왼쪽 끝(x=0)에
+ * 붙어 있었다.** 좌우 거터를 주고 본문과 같은 폭 안에 맞춘다.
+ *
+ * **세로로는 한 픽셀도 늘리지 않는다.** 이 줄이 두꺼워지면 아래의 모든 페이지가
+ * 그만큼 내려가고, 390px 의 `CART_STALE` 배너가 뷰포트를 벗어난다(§9.5.4).
+ */
+.app > .tabs {
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/*
+ * 탭 안의 배지("읽기 전용")는 상태 코드가 아니라 짧은 안내문이다. 검정 mono 칩을
+ * 그대로 쓰면 (a) 선택된 탭이 검정이라 칩이 배경에 잠기고 (b) 한글이 mono 로 나온다.
+ */
+.tab .badge {
+  margin-left: var(--space-xs);
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-body-sm);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 /* --------------------------------------------------------------- body */
 
 .app__body {
@@ -174,6 +204,27 @@
   flex-direction: column;
   gap: var(--space-xl);
   min-width: 0;
+}
+
+/*
+ * **사이드에 아무것도 없으면 열 자체를 없앤다.**
+ *
+ * 관리 화면의 사이드에는 항상 폼이 있어서 이 상황이 없었다. 구매 화면은 다르다 —
+ * 상품 목록·내 주문의 사이드는 상세를 열기 전까지 비어 있고, 그동안 360 + 32px 이
+ * 흰 여백으로 남는다. 1280px 에서 상품 카드가 4열이 아니라 3열로 접히고 오른쪽
+ * 3분의 1이 통째로 비는 것이 실제로 그것이다.
+ *
+ * `:empty` 는 자식 노드가 하나도 없을 때만 맞는다. 조건부 렌더가 전부 false 면
+ * React 는 `<aside>` 를 빈 채로 남기므로 **기능 코드를 건드리지 않고** 판정된다.
+ * 상세를 열면 열이 다시 생기며 그리드가 좁아지는데, 그 순간 사용자가 연 것이
+ * 바로 그 열이라 변화의 원인이 화면에 있다.
+ */
+.layout__side:empty {
+  display: none;
+}
+
+.layout:has(> .layout__side:empty) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /*
