@@ -15,15 +15,23 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import shop.domain.Cart;
+import shop.domain.CartItem;
 import shop.domain.Customer;
 import shop.domain.Product;
+import shop.domain.ShopperProfile;
 import shop.domain.User;
+import shop.dto.CartItemAddRequest;
 import shop.dto.OrderCreateRequest;
 import shop.dto.OrderItemRequest;
 import shop.dto.OrderResponse;
+import shop.repository.CartItemRepository;
+import shop.repository.CartRepository;
 import shop.repository.CustomerRepository;
 import shop.repository.ProductRepository;
+import shop.repository.ShopperProfileRepository;
 import shop.repository.UserRepository;
+import shop.service.CartService;
 import shop.service.OrderService;
 
 /**
@@ -61,6 +69,10 @@ public class LocalSeedRunner implements CommandLineRunner {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final TransactionTemplate transactionTemplate;
+	private final ShopperProfileRepository shopperProfileRepository;
+	private final CartRepository cartRepository;
+	private final CartItemRepository cartItemRepository;
+	private final CartService cartService;
 
 	@PersistenceContext
 	private EntityManager em;
@@ -74,8 +86,11 @@ public class LocalSeedRunner implements CommandLineRunner {
 		seedCustomers();
 		seedOrders();
 		seedUsers();
-		log.info("local 시드 완료 - 상품 {}건, 고객 {}건, 계정 {}건",
-				productRepository.count(), customerRepository.count(), userRepository.count());
+		seedShopperProfiles();
+		seedCarts();
+		log.info("local 시드 완료 - 상품 {}건, 고객 {}건, 계정 {}건, 카트 {}건",
+				productRepository.count(), customerRepository.count(), userRepository.count(),
+				cartRepository.count());
 	}
 
 	/**
@@ -116,8 +131,10 @@ public class LocalSeedRunner implements CommandLineRunner {
 		productRepository.saveAll(List.of(
 				Product.create("무선 저소음 키보드", "펜타그래프, 블루투스 3채널", 62_000, 24, null),
 				Product.create("키보드 손목받침대", "메모리폼", 18_000, 40, null),
+				// kim 카트 2번째 라인.
 				Product.create("게이밍 마우스패드", "대형 900×400", 15_000, 60, null),
 				Product.create("FHD 웹캠", "1080p 30fps, 자동 초점", 55_000, 12, null),
+				// choi 카트 — 체크아웃 성공 재현용.
 				Product.create("블루투스 스피커", "20W, IPX7 방수", 78_000, 18, null),
 				Product.create("노트북 거치대", "알루미늄, 6단 각도", 32_000, 25, null),
 				Product.create("USB 콘덴서 마이크", "카디오이드, 헤드폰 모니터링", 120_000, 9, null),
@@ -126,9 +143,9 @@ public class LocalSeedRunner implements CommandLineRunner {
 				Product.create("멀티탭 6구", "개별 스위치, 3m", 22_000, 35, null),
 				Product.create("노트북 파우치 14인치", "발수 코팅", 28_000, 30, null),
 				Product.create("무선 충전 패드", "15W 고속 충전", 34_000, 22, null),
-				// 최저가 — PRICE_ASC 정렬의 첫 항목이 된다.
+				// kim 카트 3번째 라인 · 최저가(PRICE_ASC 첫 항목).
 				Product.create("HDMI 케이블 2m", "4K 60Hz 지원", 9_000, 80, null),
-				// 재고 1 — 담긴 뒤 재고가 모자란 상태를 만들 수 있는 유일한 상품이다.
+				// park 카트 — 재고 부족 재현용. **재고 1인데 카트에는 3개가 담긴다**(§14.4).
 				Product.create("리퍼비시 무선 이어폰", "ANC, 리퍼 등급 A", 29_000, 1, null)));
 	}
 
@@ -140,7 +157,95 @@ public class LocalSeedRunner implements CommandLineRunner {
 	 * 상태가 된다 — 원인을 찾기 가장 어려운 부류다.
 	 */
 	private void seedUsers() {
-		userRepository.save(User.create("admin@skala.shop", passwordEncoder.encode("skala1234")));
+		/*
+		 * 기존 계정. **값이 그대로라 기존 인증 캡처(15~20)가 전부 재현된다.**
+		 * 이것이 유일한 ADMIN 이다 — 가입으로 만든 계정은 항상 SHOPPER 이므로 관리자를 늘리는
+		 * API 경로가 존재하지 않는다(계약 §9.4.1).
+		 */
+		userRepository.save(User.createAdmin("admin@skala.shop", passwordEncoder.encode("skala1234")));
+
+		// 구매자 계정 4건(§14.3). 비밀번호는 시드에서도 인코딩해서 넣는다 — 평문을 넣으면
+		// matches 가 항상 false 라 계정은 보이는데 로그인만 안 되는 상태가 된다.
+		userRepository.saveAll(List.of(
+				User.create("kim@skala.shop", passwordEncoder.encode("skala1234")),
+				User.create("lee@skala.shop", passwordEncoder.encode("skala1234")),
+				User.create("park@skala.shop", passwordEncoder.encode("skala1234")),
+				User.create("choi@skala.shop", passwordEncoder.encode("skala1234"))));
+	}
+
+	/**
+	 * 계정 2~5를 기존 고객 1~4에 연결한다(§14.3). 빈 카트도 함께 만든다.
+	 *
+	 * <p><b>시드가 프로필을 명시적으로 만들므로 BR-31의 자동 생성 경로를 타지 않는다.</b>
+	 * 자동 생성은 새로 가입한 계정에서만 발생하며, 그 경로는 100,000 포인트를 주지만 여기서는
+	 * 기존 고객의 포인트(1,911,000 / 10,000 / 300,000 / 500,000)가 그대로 쓰인다 —
+	 * 포인트 부족 재현이 lee 의 10,000에 걸려 있어 덮어쓰면 안 된다.
+	 */
+	private void seedShopperProfiles() {
+		linkShopper("kim@skala.shop", 1L);
+		linkShopper("lee@skala.shop", 2L);
+		linkShopper("park@skala.shop", 3L);
+		linkShopper("choi@skala.shop", 4L);
+	}
+
+	private void linkShopper(String username, Long customerId) {
+		User user = userRepository.findByUsername(username).orElseThrow();
+		Customer customer = customerRepository.findById(customerId).orElseThrow();
+		shopperProfileRepository.save(ShopperProfile.create(user, customer));
+		cartRepository.save(Cart.create(customer));
+	}
+
+	/**
+	 * 카트 시드(§14.4). <b>각 케이스의 부족 원인이 하나씩만 되도록 짰다</b> — 재고와 포인트가 동시에
+	 * 모자라면 어느 규칙이 발동했는지 캡처만으로 판정할 수 없다.
+	 *
+	 * <table>
+	 *   <tr><th>고객</th><th>총액</th><th>포인트</th><th>재고</th><th>재현 대상</th></tr>
+	 *   <tr><td>1 김스칼라</td><td>84,000</td><td>1,911,000 ✅</td><td>충분 ✅</td><td>다건 장바구니</td></tr>
+	 *   <tr><td>2 이포인트</td><td>25,000</td><td>10,000 ❌</td><td>충분 ✅</td><td>포인트 부족</td></tr>
+	 *   <tr><td>3 박취소</td><td>87,000</td><td>300,000 ✅</td><td>1 ❌</td><td>재고 부족</td></tr>
+	 *   <tr><td>4 최구매</td><td>78,000</td><td>500,000 ✅</td><td>충분 ✅</td><td>체크아웃 성공</td></tr>
+	 * </table>
+	 *
+	 * <p><b>왜 kim 이 아니라 choi 로 체크아웃을 찍는가.</b> 체크아웃은 카트를 비운다(BR-29).
+	 * kim 의 카트로 찍으면 그 다음부터 "장바구니 다건" 화면을 다시 찍을 수 없다. lee·park 은
+	 * 거부되므로 상태를 바꾸지 않아 반복 촬영에 가장 안전하다.
+	 */
+	private void seedCarts() {
+		// kim — 3라인 84,000원. 어떤 캡처에서도 소비되지 않으므로 몇 번을 열어도 그대로다.
+		cartService.addItem("kim@skala.shop", new CartItemAddRequest(4L, 1));
+		cartService.addItem("kim@skala.shop", new CartItemAddRequest(9L, 2));
+		cartService.addItem("kim@skala.shop", new CartItemAddRequest(19L, 1));
+
+		// lee — 포인트 부족 재현용. 재고는 50으로 충분해 원인이 하나다.
+		cartService.addItem("lee@skala.shop", new CartItemAddRequest(1L, 1));
+
+		// choi — 체크아웃 성공 재현용.
+		cartService.addItem("choi@skala.shop", new CartItemAddRequest(11L, 1));
+
+		seedOutOfStockCart();
+	}
+
+	/**
+	 * park 카트 — <b>서비스가 아니라 리포지토리로 직접 저장한다</b>(§14.4).
+	 *
+	 * <p>수량 3인데 상품 20의 재고는 1이다. {@code CartService.addItem}은 이를 {@code OUT_OF_STOCK}으로
+	 * 거부하므로(BR-26) 정상 경로로는 만들 수 없다. <b>그리고 만들 수 없다는 사실 자체가 재현 대상이다</b> —
+	 * "담은 뒤 재고가 줄어든 상태"를 기동만으로 만들어야 하는데, 그 상태에 도달하는 정상 경로는
+	 * 정의상 존재하지 않는다.
+	 *
+	 * <p>§6.4의 "주문 시드는 실제 서비스를 호출해 만든다" 원칙은 유지된다. 여기가 유일한 예외이며
+	 * 예외인 이유를 이 주석이 들고 있다. 이 라인 덕분에 {@code INSUFFICIENT_STOCK} 표시와
+	 * {@code checkoutable: false}가 <b>손 조작 없이</b> 화면에 나타난다 — 없으면 촬영자가 재고를
+	 * 손으로 낮춰야 하고, 다시 찍을 때 같은 상태를 복원할 수 없다.
+	 *
+	 * <p>{@code unitPriceAtAdd}는 현재가(29,000)와 같다. 가격까지 어긋나게 하면 {@code priceChanged}와
+	 * {@code INSUFFICIENT_STOCK}이 한 화면에 겹쳐 어느 것을 보여주는 캡처인지 판정할 수 없다.
+	 */
+	private void seedOutOfStockCart() {
+		Cart parkCart = cartRepository.findByCustomerId(3L).orElseThrow();
+		Product refurbished = productRepository.findById(20L).orElseThrow();
+		cartItemRepository.save(CartItem.createUnchecked(parkCart, refurbished, 3));
 	}
 
 	private void seedCustomers() {

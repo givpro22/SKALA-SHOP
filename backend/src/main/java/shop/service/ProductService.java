@@ -15,6 +15,7 @@ import shop.dto.ProductUpdateRequest;
 import shop.exception.DuplicateProductNameException;
 import shop.exception.ProductInUseException;
 import shop.exception.ProductNotFoundException;
+import shop.repository.CartItemRepository;
 import shop.repository.OrderItemRepository;
 import shop.repository.ProductRepository;
 
@@ -34,6 +35,7 @@ public class ProductService {
 
 	private final ProductRepository productRepository;
 	private final OrderItemRepository orderItemRepository;
+	private final CartItemRepository cartItemRepository;
 
 	@Transactional
 	public ProductResponse create(ProductCreateRequest request) {
@@ -95,14 +97,28 @@ public class ProductService {
 	 *
 	 * <p>참조 검사에 {@code status} 조건을 붙이지 않는다 — <b>취소된 주문의 라인도 참조로 센다.</b>
 	 * 주문 이력은 보존 대상이고, 참조 상품이 사라지면 이력이 깨진다.
+	 *
+	 * <p><b>BR-30 (2026-08-08 확장, {@code [호환성 쟁점 C-5]}) — 카트 라인은 판정 대상이 아니라
+	 * 정리 대상이다.</b> 판정 대상에 넣으면 <b>다른 사람이 장바구니에 담아둔 것만으로 관리자가
+	 * 상품을 삭제하지 못한다.</b> 카트는 구매 의사 표시일 뿐 이력이 아니다. 대신 삭제가 확정되면
+	 * 참조 라인을 같은 트랜잭션에서 지운다 — <b>지우지 않으면 FK 위반으로 500이 난다.</b>
+	 *
+	 * <p>관측 계약은 그대로다: 성공은 여전히 204이고 {@code PRODUCT_IN_USE}의 근거는
+	 * {@code OrderItem}뿐이다. 늘어난 것은 서비스 내부의 삭제 한 줄이다.
 	 */
 	@Transactional
 	public void delete(Long id) {
-		Product product = getProductOrThrow(id);
+		getProductOrThrow(id);
 		if (orderItemRepository.existsByProductId(id)) {
 			throw new ProductInUseException(id);
 		}
-		productRepository.delete(product);
+		/*
+		 * 벌크 삭제는 clearAutomatically 로 영속성 컨텍스트를 비운다. 위에서 읽은 Product 인스턴스를
+		 * 그대로 delete(entity) 에 넘기면 준영속 상태라 merge 로 한 번 더 읽히므로, id 로 다시
+		 * 지운다 — 삭제 대상이 두 경로로 갈라지지 않는다.
+		 */
+		cartItemRepository.deleteByProductId(id);
+		productRepository.deleteById(id);
 	}
 
 	private Product getProductOrThrow(Long id) {

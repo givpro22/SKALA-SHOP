@@ -45,7 +45,9 @@ public class AuthService {
 		}
 
 		return new LoginResponse(
-				tokenProvider.issue(user.getUsername()),
+				// 역할을 클레임으로 싣는다. LoginResponse 의 필드는 늘지 않는다 — 역할이 필요한
+				// 화면은 GET /api/shop/me 로 읽고, 서버는 토큰에서 읽는다(계약 §9.4).
+				tokenProvider.issue(user.getUsername(), user.getRole()),
 				tokenProvider.validitySeconds(),
 				user.getUsername());
 	}

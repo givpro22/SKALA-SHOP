@@ -3,6 +3,7 @@ package shop.security;
 import java.io.IOException;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -47,16 +48,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 
 		String token = header.substring(PREFIX.length()).trim();
-		String username;
+		JwtTokenProvider.AuthenticatedUser user;
 		try {
-			username = tokenProvider.parseUsername(token);
+			user = tokenProvider.parse(token);
 		} catch (JwtVerificationException e) {
 			SecurityContextHolder.clearContext();
 			errorResponseWriter.write(request, response, e.getErrorCode());
 			return;
 		}
 
-		var authentication = new UsernamePasswordAuthenticationToken(username, null, java.util.List.of());
+		/*
+		 * 역할을 권한으로 옮긴다. **판정은 하지 않는다** — 무엇을 막을지는 SecurityConfig 의 경로
+		 * 규칙이 정한다. 필터가 역할까지 판정하면 경로가 늘 때마다 필터를 고쳐야 하고, 권한 규칙이
+		 * 필터와 설정 두 곳에 흩어져 어느 쪽이 실제로 적용됐는지 읽히지 않는다.
+		 *
+		 * ROLE_ 접두어는 Spring Security 의 hasRole 이 요구하는 규약이다. 붙이지 않으면
+		 * hasRole("ADMIN") 이 어떤 토큰으로도 통과하지 않아 모든 관리 API 가 403 이 된다.
+		 */
+		var authorities = java.util.List.of(new SimpleGrantedAuthority("ROLE_" + user.role().name()));
+		var authentication = new UsernamePasswordAuthenticationToken(user.username(), null, authorities);
 		authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 		chain.doFilter(request, response);

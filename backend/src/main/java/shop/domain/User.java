@@ -9,6 +9,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -54,6 +56,20 @@ public class User {
 	@Column(nullable = false, length = 100)
 	private String password;
 
+	/**
+	 * 계정 역할(계약 §9.4.1, {@code [호환성 쟁점 C-1]}). <b>기존 엔티티에 대한 유일한 변경이다.</b>
+	 *
+	 * <p>관측 계약은 바뀌지 않는다 — {@code UserResponse} 는 여전히 3필드이고
+	 * {@code SignupRequest}·{@code LoginResponse} 도 그대로다. 역할은 {@code GET /api/shop/me} 로만
+	 * 나간다.
+	 *
+	 * <p>이 컬럼이 없으면 <b>구매자 계정의 토큰으로 {@code DELETE /api/products/1} 이 통과한다.</b>
+	 * 구매 흐름을 여는 것은 로그인 계정의 성격이 둘로 갈라지는 것이라, 역할 없이는 열 수 없다.
+	 */
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private UserRole role;
+
 	@CreatedDate
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
@@ -62,13 +78,31 @@ public class User {
 	@Column(nullable = false)
 	private LocalDateTime updatedAt;
 
-	private User(String username, String password) {
+	private User(String username, String password, UserRole role) {
 		this.username = username;
 		this.password = password;
+		this.role = role;
 	}
 
-	/** {@code password} 는 <b>이미 인코딩된 값</b>이어야 한다. 인코딩 책임은 Service 에 있다. */
+	/**
+	 * {@code password} 는 <b>이미 인코딩된 값</b>이어야 한다. 인코딩 책임은 Service 에 있다.
+	 *
+	 * <p><b>역할을 인자로 받지 않는다.</b> 가입({@code POST /api/auth/signup})으로 만들어진 계정은
+	 * 항상 {@code SHOPPER} 다 — 요청으로 역할을 받으면 누구나 관리자가 된다(계약 §9.4.1).
+	 * {@code ADMIN} 은 {@link #createAdmin} 으로만 만들어지고, 그 호출부는 {@code local} 시드 하나뿐이다.
+	 */
 	public static User create(String username, String encodedPassword) {
-		return new User(username, encodedPassword);
+		return new User(username, encodedPassword, UserRole.SHOPPER);
+	}
+
+	/**
+	 * 운영자 계정. <b>시드 전용이다</b> — API 로 도달하는 경로가 없다.
+	 *
+	 * <p>메서드를 따로 만든 이유: {@code create(username, password, role)} 하나로 두면 언젠가
+	 * 요청 값이 {@code role} 자리에 그대로 흘러 들어간다. 관리자를 만드는 경로가 이름부터 다르면
+	 * 그 실수가 호출부에서 눈에 띈다.
+	 */
+	public static User createAdmin(String username, String encodedPassword) {
+		return new User(username, encodedPassword, UserRole.ADMIN);
 	}
 }

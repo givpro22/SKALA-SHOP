@@ -14,8 +14,11 @@ import shop.dto.PointChargeRequest;
 import shop.exception.CustomerHasOrdersException;
 import shop.exception.CustomerNotFoundException;
 import shop.exception.DuplicateEmailException;
+import shop.repository.CartItemRepository;
+import shop.repository.CartRepository;
 import shop.repository.CustomerRepository;
 import shop.repository.OrderRepository;
+import shop.repository.ShopperProfileRepository;
 
 /**
  * 고객 비즈니스 로직. 클래스에 {@code readOnly = true}, 쓰기 메서드에만 {@code @Transactional}.
@@ -27,6 +30,9 @@ public class CustomerService {
 
 	private final CustomerRepository customerRepository;
 	private final OrderRepository orderRepository;
+	private final CartRepository cartRepository;
+	private final CartItemRepository cartItemRepository;
+	private final ShopperProfileRepository shopperProfileRepository;
 
 	@Transactional
 	public CustomerResponse create(CustomerCreateRequest request) {
@@ -65,6 +71,11 @@ public class CustomerService {
 	 * BR-18. 주문 이력이 있는 고객은 삭제할 수 없다.
 	 *
 	 * <p>{@code status} 조건을 붙이지 않는다 — <b>취소된 주문도 이력으로 센다</b>(스펙 §2.3).
+	 *
+	 * <p><b>카트·구매자 프로필은 판정 대상이 아니라 정리 대상이다</b>(스펙 §10.2, 2026-08-08 확장).
+	 * 상품 삭제에서 {@code CartItem}을 다룬 것과 같은 판단이다 — 장바구니는 이력이 아니므로 삭제를
+	 * 막을 근거가 되지 못하고, 그대로 두면 FK 위반으로 500이 난다. 삭제 순서는 참조의 역순
+	 * (라인 → 카트 → 프로필 → 고객)이며 전부 한 트랜잭션이다.
 	 */
 	@Transactional
 	public void delete(Long id) {
@@ -72,6 +83,11 @@ public class CustomerService {
 		if (orderRepository.existsByCustomerId(id)) {
 			throw new CustomerHasOrdersException(id);
 		}
+		cartRepository.findByCustomerId(id).ifPresent(cart -> {
+			cartItemRepository.deleteByCartId(cart.getId());
+			cartRepository.delete(cart);
+		});
+		shopperProfileRepository.findByCustomerId(id).ifPresent(shopperProfileRepository::delete);
 		customerRepository.delete(customer);
 	}
 
