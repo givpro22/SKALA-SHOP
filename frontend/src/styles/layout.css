@@ -32,6 +32,36 @@
   white-space: nowrap;
 }
 
+/*
+ * SKALA 워드마크는 **흰색 에셋 하나뿐**이다(어두운 배경 전용). 헤더가 흰 캔버스이므로
+ * 그대로 얹으면 보이지 않는다. 검정 칩을 깔아 inverse 표면 위에 올린다 —
+ * 로고 파일을 변색하지 않고 넣는 유일한 방법이고, 시스템에 이미 있는
+ * --color-inverse-canvas 를 쓰므로 색이 하나도 늘지 않는다.
+ *
+ * 칩 라운드는 pill 이 아니라 md 다. pill 은 이 시스템에서 **버튼의 표시**이고,
+ * 브랜드 마크가 버튼처럼 보이면 누를 수 있는 것으로 읽힌다. 이미지 프레임 규칙(md)을 따른다.
+ */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.brand__mark {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--color-inverse-canvas);
+}
+
+/* 원본이 228×56 이라 16px 높이에서 3배 밀도가 나온다. 별도 2x 에셋이 필요 없다. */
+.brand__mark img {
+  display: block;
+  width: auto;
+  height: 16px;
+}
+
 .app__api {
   margin-left: auto;
   font-family: var(--font-mono);

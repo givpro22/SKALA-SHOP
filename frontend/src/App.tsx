@@ -22,7 +22,16 @@ export default function App() {
   return (
     <div className="app">
       <header className="app__head">
-        <h1>SKALA-SHOP</h1>
+        {/*
+          로고 alt 가 "SKALA", 옆 텍스트가 "SHOP" 이라 접근성 이름은 그대로 "SKALA SHOP" 이다.
+          워드마크를 이미지로 두면서 제목이 빈 h1 이 되는 것을 막는다.
+        */}
+        <h1 className="brand">
+          <span className="brand__mark">
+            <img src="/skala-logo.png" alt="SKALA" width={228} height={56} />
+          </span>
+          SHOP
+        </h1>
         <nav className="tabs">
           {TABS.map((item) => (
             <button
