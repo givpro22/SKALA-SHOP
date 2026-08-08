@@ -139,6 +139,39 @@ class AdminBootstrapTest {
 	}
 
 	/**
+	 * 결함 4 — {@code ADMIN}이 0건이어도 <b>같은 username 이 다른 역할로 있을 수 있다.</b>
+	 *
+	 * <p>실제 경로가 있다: {@code role} 컬럼 사고를 정리하려고 전량 강등하면
+	 * {@code admin@skala.shop}이 SHOPPER 로 남고, 그 이름은 {@code local} 시드가 쓰는 이름이라
+	 * 운영자가 {@code ADMIN_USERNAME}으로 그대로 고를 가능성이 높다.
+	 *
+	 * <p><b>이 단언은 "실패한다"가 아니라 "어떻게 실패하는가"를 본다.</b> 가드가 없어도 기동은
+	 * 어차피 실패하지만({@code DataIntegrityViolationException}), 그 실패는 무엇을 고쳐야 하는지
+	 * 알려주지 않고 컨테이너를 재시작 루프에 남긴다. 그래서 <b>예외 타입과 메시지에 이름이
+	 * 들어가는지</b>를 단언한다 — 그것이 이 수정의 전부이기 때문이다.
+	 */
+	@Test
+	@DisplayName("6 — username 이 SHOPPER 로 이미 있으면 IllegalStateException 으로 끊고, 승격시키지 않는다")
+	void failsWhenUsernameAlreadyTaken() {
+		userRepository.save(User.create(USERNAME, passwordEncoder.encode("preexisting1234")));
+
+		assertThatThrownBy(() -> runner(USERNAME, PASSWORD).run())
+				.as("unique 제약이 던지는 DataIntegrityViolationException 은 원인을 알려주지 않는다")
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining(USERNAME);
+
+		User existing = userRepository.findByUsername(USERNAME).orElseThrow();
+		assertThat(existing.getRole())
+				.as("승격시키면 공개 signup 으로 이름을 선점하는 것이 곧 권한 획득이 된다 "
+						+ "— §9.4.5 가 기각한 'first user wins' 를 뒷문으로 들이는 셈이다")
+				.isEqualTo(UserRole.SHOPPER);
+		assertThat(passwordEncoder.matches("preexisting1234", existing.getPassword()))
+				.as("기존 계정의 비밀번호를 건드리지 않는다")
+				.isTrue();
+		assertThat(userRepository.countByRole(UserRole.ADMIN)).isZero();
+	}
+
+	/**
 	 * <b>이 테스트가 핵심이다.</b> 1~4번은 "계정이 만들어졌다"만 증명하고
 	 * <b>"카탈로그를 채울 수 있다"는 증명하지 않는다.</b> 이번 결함의 실질은 "ADMIN이 없다"가 아니라
 	 * <b>"카탈로그를 채울 수 없다"</b>였다 — 계정이 있어도 역할이 실제로 먹히지 않으면 같은 상태다.

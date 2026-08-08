@@ -3,6 +3,7 @@ package shop.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,6 +43,26 @@ import shop.repository.UserRepository;
  *
  * <p>덮어쓰면 <b>운영 중에 환경변수를 바꾼 것만으로 관리자 비밀번호가 조용히 리셋된다.</b>
  * 그래서 {@code ADMIN}이 1건이라도 있으면 자격증명이 주입돼 있어도 손대지 않는다.
+ *
+ * <h2>이름이 이미 쓰이고 있으면 기동을 끊는다 — 승격시키지 않는다</h2>
+ *
+ * <p>{@code ADMIN}이 0건이어도 <b>같은 username 이 다른 역할로 존재할 수 있다.</b> 실제 경로가 있다:
+ * {@code role} 컬럼 사고를 정리하려고 전량 강등({@code UPDATE ... SET role='SHOPPER'})하면
+ * {@code admin@skala.shop}이 SHOPPER 로 남는데, 그 이름은 {@code local} 시드가 쓰는 이름이라
+ * 운영자가 {@code ADMIN_USERNAME}으로 그대로 고를 가능성이 높다.
+ *
+ * <p>그대로 저장하면 unique 제약 위반으로 <b>{@code DataIntegrityViolationException}</b>이 나고,
+ * 그 메시지는 무엇을 고쳐야 하는지 알려주지 않는다. 컨테이너 재시작 정책에 따라
+ * <b>무한 재시작</b>으로 남는다. 그래서 저장 전에 확인하고 {@link IllegalStateException}으로 끊는다 —
+ * <b>조용한 실패를 시끄러운 실패로 바꾸는 것</b>이 이 검사의 전부다.
+ *
+ * <p><b>기존 계정을 승격시키는 선택지는 없다.</b> {@code POST /api/auth/signup}은 공개이므로,
+ * 승격을 허용하면 <b>운영자가 쓸 이메일을 미리 가입해 두는 것이 곧 관리자 권한 획득</b>이 된다.
+ * §9.4.5가 "first user wins"를 기각한 이유가 정확히 그것이다.
+ *
+ * <p><b>알려진 한계:</b> 이 검사는 충돌을 <b>진단 가능</b>하게 만들 뿐 <b>막지는 못한다.</b>
+ * 공개 가입으로 이름을 선점당하면 그 이름으로는 부트스트랩이 계속 실패한다(기동 불능).
+ * 그 표면을 닫는 것은 공개 엔드포인트의 동작을 바꾸는 일이라 계약 소관이다.
  *
  * <h2>{@code ProdEnvironmentGuard}에 넣지 않은 이유</h2>
  *
@@ -95,8 +116,42 @@ public class AdminBootstrapRunner implements CommandLineRunner {
 
 		validateCredentials();
 
-		User admin = userRepository.save(
-				User.createAdmin(adminUsername, passwordEncoder.encode(adminPassword)));
+		/*
+		 * 같은 username 이 이미 있으면 **여기서 끊는다.**
+		 *
+		 * 이 검사가 없으면 저장이 unique 제약에 걸려 DataIntegrityViolationException 이 나는데,
+		 * 그 예외는 무엇을 어떻게 고쳐야 하는지 알려주지 않는다. §9.4.5 가 자격증명 누락에
+		 * 친절한 메시지를 붙인 것과 같은 이유로, 이 실패도 같은 형태여야 한다.
+		 *
+		 * **기존 계정을 ADMIN 으로 승격시키지 않는다.** 승격시키면 공개 엔드포인트인
+		 * POST /api/auth/signup 으로 운영자가 쓸 이메일을 선점하는 것이 곧 관리자 권한 획득이 되어,
+		 * §9.4.5 가 기각한 "first user wins" 를 뒷문으로 들이게 된다. 스키마 마이그레이션이
+		 * 권한을 부여했던 결함(UserRole 주석)과도 같은 부류다.
+		 */
+		if (userRepository.existsByUsername(adminUsername)) {
+			throw new IllegalStateException(
+					("ADMIN_USERNAME 으로 지정한 계정이 이미 존재합니다: %s "
+							+ "(ADMIN 이 아닌 계정입니다). 다른 ADMIN_USERNAME 을 쓰거나 해당 계정을 정리한 뒤 "
+							+ "다시 기동해 주세요. 기존 계정을 관리자로 승격시키지는 않습니다 — "
+							+ "가입으로 이름을 선점하는 것이 권한 획득이 되어서는 안 되기 때문입니다.")
+							.formatted(adminUsername));
+		}
+
+		User admin;
+		try {
+			/*
+			 * 위 검사와 저장 사이에 같은 이름으로 가입이 들어오는 경쟁 조건이 남는다.
+			 * saveAndFlush 로 즉시 INSERT 해서 그 위반을 **이 try 안에서** 잡고 같은 예외로 번역한다.
+			 * 지연시키면 commit 시점에 터져 잡을 코드가 남아 있지 않다
+			 * (ShopperProfileService.createProfile 과 같은 패턴).
+			 */
+			admin = userRepository.saveAndFlush(
+					User.createAdmin(adminUsername, passwordEncoder.encode(adminPassword)));
+		} catch (DataIntegrityViolationException e) {
+			throw new IllegalStateException(
+					"ADMIN 부트스트랩 중 계정 아이디가 충돌했습니다: %s (동시에 같은 아이디로 가입이 있었습니다). 다시 기동해 주세요."
+							.formatted(adminUsername), e);
+		}
 
 		// username 만 남긴다. 비밀번호는 어떤 형태로도 로그에 남기지 않는다.
 		log.info("ADMIN 계정이 없어 부트스트랩으로 생성했습니다. username={}", admin.getUsername());
