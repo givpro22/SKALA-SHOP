@@ -56,13 +56,21 @@ import shop.repository.UserRepository;
  * <b>무한 재시작</b>으로 남는다. 그래서 저장 전에 확인하고 {@link IllegalStateException}으로 끊는다 —
  * <b>조용한 실패를 시끄러운 실패로 바꾸는 것</b>이 이 검사의 전부다.
  *
+ * <p><b>사전 검사와 저장 실패 번역을 둘 다 두는 이유</b>(계약 §9.4.5 조건 3): 계약이 요구하는 것은
+ * <b>"어떤 실행 순서에서도 기동 실패 + 읽을 수 있는 원인"</b>이지 특정 수단이 아니다. 사전 검사만으로는
+ * 검사와 저장 사이의 인터리빙을 막지 못한다 — 공개 {@code signup} 유입, 그리고 <b>두 인스턴스가 동시에
+ * 기동하는 경우</b>(컨테이너에서는 평범한 조건이다). 사전 검사로 걸러도, 저장 실패를 번역해도, 둘 다 해도
+ * <b>관측 결과가 같으면 계약 준수</b>다.
+ *
  * <p><b>기존 계정을 승격시키는 선택지는 없다.</b> {@code POST /api/auth/signup}은 공개이므로,
  * 승격을 허용하면 <b>운영자가 쓸 이메일을 미리 가입해 두는 것이 곧 관리자 권한 획득</b>이 된다.
  * §9.4.5가 "first user wins"를 기각한 이유가 정확히 그것이다.
  *
- * <p><b>알려진 한계:</b> 이 검사는 충돌을 <b>진단 가능</b>하게 만들 뿐 <b>막지는 못한다.</b>
- * 공개 가입으로 이름을 선점당하면 그 이름으로는 부트스트랩이 계속 실패한다(기동 불능).
- * 그 표면을 닫는 것은 공개 엔드포인트의 동작을 바꾸는 일이라 계약 소관이다.
+ * <p><b>알려진 한계 — 공개 {@code signup}으로 부트스트랩 username을 선점당하면 기동이 막힌다</b>
+ * (계약 §9.4.5 한계 표 · §9.4.6). <b>감수하는 이유:</b> 코드로 막으려면 {@code signup}을 제한해야 하고,
+ * <b>그 방어의 대가가 구매자 가입 기능 자체</b>다. <b>대응:</b> §9.4.6의 username 선택 규칙으로
+ * 무력화한다 — 공격은 정확한 값을 알아야 성립하므로, 추측 불가능한 값이면 성립하지 않는다.
+ * 아래 {@link #SEEDED_ADMIN_USERNAME} 거부가 그 규칙을 강제하는 지점이다.
  *
  * <h2>{@code ProdEnvironmentGuard}에 넣지 않은 이유</h2>
  *
@@ -82,6 +90,15 @@ public class AdminBootstrapRunner implements CommandLineRunner {
 	private static final int PASSWORD_MIN = 8;
 	private static final int PASSWORD_MAX = 72;
 	private static final int USERNAME_MAX = 100;
+
+	/**
+	 * {@code local} 시드가 쓰는 관리자 아이디. <b>{@code prod} 에서는 이 값을 거부한다.</b>
+	 *
+	 * <p>소스·문서·캡처에 전부 적혀 있어 <b>공개된 이름</b>이며, 배포본이 그대로 쓰면 선점·추측의
+	 * 표적이 된다. {@code ProdEnvironmentGuard} 가 {@code JWT_SECRET} 의 개발 기본값을 거부하는 것과
+	 * 같은 판단이다 — 개발용으로 알려진 값이 배포본에 흘러드는 것을 기동 시점에 끊는다.
+	 */
+	private static final String SEEDED_ADMIN_USERNAME = "admin@skala.shop";
 
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
@@ -174,6 +191,26 @@ public class AdminBootstrapRunner implements CommandLineRunner {
 			throw new IllegalStateException(
 					"ADMIN_USERNAME 은 이메일 형식이어야 하고 %d자를 넘을 수 없습니다. (현재 %d자)"
 							.formatted(USERNAME_MAX, adminUsername.length()));
+		}
+		/*
+		 * 시드에 적힌 이름은 prod 에서 거부한다.
+		 *
+		 * ProdEnvironmentGuard 가 JWT_SECRET 에 "local-dev" 가 들어 있으면 거부하는 것과
+		 * **같은 패턴·같은 이유**다 — 개발용으로 알려진 값이 배포본에 그대로 쓰이는 것을 막는다.
+		 *
+		 * 이 검사가 선점 공격 방어의 실질이다. 공격이 성립하려면 공격자가 ADMIN_USERNAME 을
+		 * **정확히** 알아야 하는데, 소스와 문서에 적혀 있는 이 값이 추측 대상 1순위다.
+		 * 권고로 두면 지켜지지 않고, 지켜지지 않은 결과는 기동 불가다.
+		 *
+		 * **대신 쓸 값을 여기에 박지 않는다.** 박는 순간 그 값이 새로운 "알려진 이름"이 되어
+		 * 이 검사가 막으려던 상태를 코드가 스스로 만든다.
+		 */
+		if (SEEDED_ADMIN_USERNAME.equalsIgnoreCase(adminUsername.trim())) {
+			throw new IllegalStateException(
+					("ADMIN_USERNAME 으로 %s 를 쓸 수 없습니다. 이 값은 local 시드와 문서에 적혀 있어 "
+							+ "공개된 이름이며, 배포본의 관리자 아이디로 쓰면 선점·추측의 표적이 됩니다. "
+							+ "배포 환경에서만 아는 다른 아이디를 지정해 주세요.")
+							.formatted(SEEDED_ADMIN_USERNAME));
 		}
 		if (adminPassword.length() < PASSWORD_MIN || adminPassword.length() > PASSWORD_MAX) {
 			throw new IllegalStateException(

@@ -172,6 +172,34 @@ class AdminBootstrapTest {
 	}
 
 	/**
+	 * 시드에 적힌 관리자 아이디는 {@code prod} 에서 거부한다.
+	 *
+	 * <p>{@code ProdEnvironmentGuard} 가 {@code JWT_SECRET} 의 개발 기본값을 거부하는 것과 같은 패턴이며,
+	 * <b>username 선택이 선점 방어의 실질</b>이기 때문이다 — 공격이 성립하려면 공격자가
+	 * {@code ADMIN_USERNAME} 을 정확히 알아야 하는데, 소스·문서·캡처에 전부 적힌 이 값이
+	 * 추측 대상 1순위다. 권고로 두면 지켜지지 않고, 지켜지지 않은 결과는 기동 불가다.
+	 */
+	@Test
+	@DisplayName("7 — 시드에 적힌 admin@skala.shop 은 ADMIN_USERNAME 으로 쓸 수 없다")
+	void rejectsSeededAdminUsername() {
+		assertThatThrownBy(() -> runner("admin@skala.shop", PASSWORD).run())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("admin@skala.shop");
+
+		assertThat(userRepository.countByRole(UserRole.ADMIN))
+				.as("거부됐으므로 계정이 만들어지면 안 된다")
+				.isZero();
+	}
+
+	@Test
+	@DisplayName("7b — 대소문자만 다른 값도 거부한다 (이메일은 대소문자를 구분하지 않는다)")
+	void rejectsSeededAdminUsernameIgnoringCase() {
+		assertThatThrownBy(() -> runner("Admin@Skala.Shop", PASSWORD).run())
+				.as("대소문자로 우회되면 검사가 사실상 없는 것과 같다")
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
 	 * <b>이 테스트가 핵심이다.</b> 1~4번은 "계정이 만들어졌다"만 증명하고
 	 * <b>"카탈로그를 채울 수 있다"는 증명하지 않는다.</b> 이번 결함의 실질은 "ADMIN이 없다"가 아니라
 	 * <b>"카탈로그를 채울 수 없다"</b>였다 — 계정이 있어도 역할이 실제로 먹히지 않으면 같은 상태다.
