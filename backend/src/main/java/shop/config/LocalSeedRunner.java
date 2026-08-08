@@ -170,7 +170,9 @@ public class LocalSeedRunner implements CommandLineRunner {
 				User.create("kim@skala.shop", passwordEncoder.encode("skala1234")),
 				User.create("lee@skala.shop", passwordEncoder.encode("skala1234")),
 				User.create("park@skala.shop", passwordEncoder.encode("skala1234")),
-				User.create("choi@skala.shop", passwordEncoder.encode("skala1234"))));
+				User.create("choi@skala.shop", passwordEncoder.encode("skala1234")),
+				// id 6 — 결제 검증 전용(§14.6). 역할은 다른 구매자와 같은 SHOPPER 다.
+				User.create("han@skala.shop", passwordEncoder.encode("skala1234"))));
 	}
 
 	/**
@@ -181,11 +183,43 @@ public class LocalSeedRunner implements CommandLineRunner {
 	 * 기존 고객의 포인트(1,911,000 / 10,000 / 300,000 / 500,000)가 그대로 쓰인다 —
 	 * 포인트 부족 재현이 lee 의 10,000에 걸려 있어 덮어쓰면 안 된다.
 	 */
+	/**
+	 * 계정 2~5를 기존 고객 1~4에 연결하고, 결제 검증 전용 계정(6 ↔ 5)을 붙인다.
+	 *
+	 * <h2>§14.6 — 소모되는 것은 계정이 아니라 카트다</h2>
+	 *
+	 * <p><b>{@code han@skala.shop} 의 카트는 비어 있고, 비워 두는 것이 이 픽스처의 전부다.</b>
+	 *
+	 * <p>§14.4·§14.5의 "순서 의존을 없앤다" 원칙이 <b>거부 케이스에만</b> 적용돼 있었다.
+	 * lee(포인트 부족)·park(재고 부족)은 거부되므로 상태를 바꾸지 않아 몇 번이든 재현되지만,
+	 * <b>성공 케이스인 choi 는 한 번 쓰면 카트가 빈다</b>(BR-29). 그래서 choi 는 사실상
+	 * <b>일회용 픽스처</b>였고, 캡처 27이 그 한 번을 썼다. 그 뒤로 "체크아웃이 실제로 되는지"를
+	 * 확인하려는 사람은 쓸 계정이 없어 <b>직접 계정을 만들어 시드를 오염시켰다.</b>
+	 *
+	 * <p><b>라인을 넣으면 안 된다.</b> 몇 개를 넣어도 소용없다 — 체크아웃은 카트 전체를 사므로
+	 * 한 번에 전부 소비된다. 비워 두면 검증자가 매번 자기 카트를 만들어 쓰고,
+	 * <b>재고가 남는 한 무한히 반복된다.</b> 담기부터가 검증 대상이라 흐름도 자연스럽다.
+	 *
+	 * <p>포인트 3,000,000은 최고가 상품(320,000)의 9회분이며, kim(1,911,000)과 자릿수가 같아
+	 * 고객 목록 화면에서 튀지 않는다. <b>이름·이메일을 평범하게 둔 것도 의도다</b> —
+	 * {@code qa@} 같은 주소가 고객 목록 캡처에 뜨면 데모 화면이 검증 도구처럼 보인다.
+	 *
+	 * <h2>결제 검증에는 상품 16 「멀티탭 6구」(22,000원, 재고 35)를 쓴다</h2>
+	 *
+	 * <p>어떤 캡처·픽스처도 그 상품을 참조하지 않는다. 반면 <b>3(재고 2) · 6(재고 100, 낙관적 락
+	 * 재시도 여력) · 20(재고 1)</b> 은 특히 위험하고, 1·2·4·5·9·11·19도 참조 중이다.
+	 *
+	 * <p><b>금지 목록 대신 권장 하나를 남기는 이유:</b> 목록이 길수록 지켜지지 않고,
+	 * <b>어긴 결과는 그 자리가 아니라 다른 라운드의 오탐으로 나타난다</b> —
+	 * 원인과 증상이 떨어져 있어 추적이 가장 어려운 부류다.
+	 */
 	private void seedShopperProfiles() {
 		linkShopper("kim@skala.shop", 1L);
 		linkShopper("lee@skala.shop", 2L);
 		linkShopper("park@skala.shop", 3L);
 		linkShopper("choi@skala.shop", 4L);
+		// §14.6 — 빈 카트가 붙는다. seedCarts 는 이 계정을 건드리지 않는다.
+		linkShopper("han@skala.shop", 5L);
 	}
 
 	private void linkShopper(String username, Long customerId) {
@@ -254,7 +288,9 @@ public class LocalSeedRunner implements CommandLineRunner {
 				// 캡처 05 — 포인트 부족 재현용. 최저가 상품(25,000)보다도 적다.
 				Customer.create("이포인트", "lee@skala.shop", 10_000),
 				Customer.create("박취소", "park@skala.shop", 300_000),
-				Customer.create("최구매", "choi@skala.shop", 500_000)));
+				Customer.create("최구매", "choi@skala.shop", 500_000),
+				// id 5 — 결제 검증 전용(§14.6). 아래 seedShopperProfiles 가 **빈 카트**를 붙인다.
+				Customer.create("한지우", "han@skala.shop", 3_000_000)));
 	}
 
 	/**
