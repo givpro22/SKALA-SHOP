@@ -1,0 +1,277 @@
+name: CI/CD
+
+# 검증은 모든 브랜치와 PR에서 돌고, 이미지 빌드·배포는 main 푸시에서만 돈다.
+# 두 워크플로 파일로 나누지 않은 이유: 파일이 갈리면 "테스트가 통과한 뒤에만 배포"를
+# workflow_run 으로 이어야 하는데, 그 방식은 커밋과 배포의 대응이 한 단계 흐려진다.
+# 한 파일 안에서 needs 로 묶으면 배포는 반드시 같은 커밋의 테스트 통과 뒤에만 시작한다.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 같은 브랜치에 연속 푸시하면 앞의 실행을 취소한다. 단, main 은 취소하지 않는다 —
+# 배포 도중에 취소되면 서버가 중간 상태로 남는다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: 백엔드 테스트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # build.gradle 의 toolchain 과 같은 21. 다르면 toolchain 이 JDK를 따로 내려받아
+          # 캐시가 무의미해지고 빌드가 느려진다.
+          java-version: "21"
+          cache: gradle
+
+      - name: Gradle 테스트
+        working-directory: backend
+        # 이미지 빌드(Dockerfile)는 -x test 로 테스트를 건너뛴다. 그 자리를 여기가 메운다 —
+        # 낙관적 락 검증(OrderConcurrencyTest)이 도는 지점은 CI 뿐이다.
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon test
+
+      - name: 테스트 리포트 업로드
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-report
+          path: backend/build/reports/tests/test
+          retention-days: 7
+
+  frontend:
+    name: 프론트엔드 빌드
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # frontend/Dockerfile 의 node:22-alpine 과 맞춘다.
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 의존성 설치
+        working-directory: frontend
+        # npm install 이 아니라 ci — lock 파일과 어긋나면 실패해야 한다.
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: 타입체크 + 번들 빌드
+        working-directory: frontend
+        # package.json 의 build 가 `tsc -b && vite build` 라서 타입 오류가 여기서 잡힌다.
+        run: npm run build
+
+  build-and-push:
+    name: 이미지 빌드·푸시 (GHCR)
+    needs: [backend, frontend]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-prefix: ${{ steps.meta.outputs.prefix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 이미지 이름 계산
+        id: meta
+        # GHCR 은 이미지 경로에 대문자를 허용하지 않는데 이 저장소 이름은 SKALA-SHOP 이다.
+        # ${{ github.repository }} 를 그대로 태그에 쓰면 push 단계에서 거부된다.
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: backend 이미지
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.prefix }}/backend:latest
+            ${{ steps.meta.outputs.prefix }}/backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: frontend 이미지
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          # VITE_* 는 런타임이 아니라 **빌드 시점에** 번들로 인라인된다.
+          # 서버에서 환경변수로 덮을 수 없으므로 여기서 배포 주소를 넣어야 한다.
+          # 값이 비면 Dockerfile 기본값(localhost:8080)으로 구워져서, 배포된 화면은
+          # 정상으로 뜨는데 API 호출만 사용자의 로컬로 나가는 상태가 된다.
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+          tags: |
+            ${{ steps.meta.outputs.prefix }}/frontend:latest
+            ${{ steps.meta.outputs.prefix }}/frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+  deploy:
+    name: 서버 배포 (SSH)
+    needs: build-and-push
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    environment: production
+    env:
+      IMAGE_PREFIX: ${{ needs.build-and-push.outputs.image-prefix }}
+      # 기본값은 SSH 홈 기준 상대경로다. `~/...` 를 기본으로 두면 ssh 로 넘기는 과정에서
+      # 틸데가 확장되는 시점이 갈려 cd 가 실패하는 경우가 있다. 절대경로가 필요하면
+      # DEPLOY_PATH 변수에 절대경로를 넣는다(서버에서 mkdir 권한이 있어야 한다).
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || 'skala-shop' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 배포 설정 확인
+        # 시크릿이 비어 있으면 ssh 가 알아보기 어려운 오류로 죽는다.
+        # 무엇을 등록해야 하는지 먼저 말하고 멈춘다.
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+        run: |
+          missing=""
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY JWT_SECRET MYSQL_ROOT_PASSWORD; do
+            [ -z "${!name}" ] && missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::등록되지 않은 시크릿:$missing (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+
+      - name: SSH 준비
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # StrictHostKeyChecking=no 대신 keyscan 으로 호스트 키를 먼저 고정한다.
+          # 검사를 끄면 중간자에게 배포 자격증명을 그대로 넘길 수 있다.
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: compose 파일 전송
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p $DEPLOY_PATH"
+          scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" docker-compose.prod.yml \
+            "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/docker-compose.yml"
+
+      - name: 배포
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          # 서버는 GHCR 에서 이미지를 pull 만 하면 된다. 새로 만든 패키지는 기본이 private 이라
+          # 로그인 없이는 pull 이 실패한다. 서버에 PAT 를 심는 대신, 이 잡에만 유효한
+          # GITHUB_TOKEN 을 넘겨 pull 직전에 로그인하고 끝나면 로그아웃한다.
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'skalashop' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRATION_SECONDS: ${{ vars.JWT_EXPIRATION_SECONDS || '3600' }}
+          # 빈 MySQL 첫 기동에는 update 가 필요하고, 스키마가 굳은 뒤에는 validate 로 조인다.
+          DDL_AUTO: ${{ vars.DDL_AUTO || 'update' }}
+          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+          BACKEND_PORT: ${{ vars.BACKEND_PORT || '8080' }}
+          FRONTEND_PORT: ${{ vars.FRONTEND_PORT || '80' }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # 값은 stdin 으로만 넘긴다. 명령줄 인자로 붙이면 서버의 프로세스 목록에
+          # JWT 서명키와 DB 비밀번호가 그대로 보인다.
+          ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            IMAGE_PREFIX="$IMAGE_PREFIX" IMAGE_TAG="$IMAGE_TAG" DEPLOY_PATH="$DEPLOY_PATH" \
+            GHCR_USER="$GHCR_USER" 'bash -s' <<REMOTE
+          set -euo pipefail
+          cd "\$DEPLOY_PATH"
+
+          # .env 는 compose 가 읽는다. 매 배포마다 새로 쓴다 —
+          # 서버에서 손으로 고친 값이 남아 있으면 어떤 설정으로 떠 있는지 알 수 없다.
+          umask 077
+          cat > .env <<'ENVFILE'
+          MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+          MYSQL_DATABASE=$MYSQL_DATABASE
+          JWT_SECRET=$JWT_SECRET
+          JWT_EXPIRATION_SECONDS=$JWT_EXPIRATION_SECONDS
+          DDL_AUTO=$DDL_AUTO
+          CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS
+          BACKEND_PORT=$BACKEND_PORT
+          FRONTEND_PORT=$FRONTEND_PORT
+          IMAGE_PREFIX=$IMAGE_PREFIX
+          IMAGE_TAG=$IMAGE_TAG
+          ENVFILE
+
+          echo '$GHCR_TOKEN' | docker login ghcr.io -u "\$GHCR_USER" --password-stdin
+          docker compose pull
+          # latest 가 아니라 커밋 SHA 태그로 띄운다. 어떤 커밋이 돌고 있는지
+          # 서버에서 바로 확인할 수 있고, 롤백은 IMAGE_TAG 만 바꾸면 된다.
+          docker compose up -d --remove-orphans
+          docker logout ghcr.io
+          # 이전 태그의 이미지가 쌓여 디스크를 채운다.
+          docker image prune -f
+          REMOTE
+
+      - name: 기동 확인
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          BACKEND_PORT: ${{ vars.BACKEND_PORT || '8080' }}
+        # up -d 는 컨테이너가 "떴다"까지만 보장한다. 백엔드가 DB 연결 실패나
+        # ProdEnvironmentGuard(JWT_SECRET 누락)로 죽어도 배포는 초록으로 끝나 버린다.
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            BACKEND_PORT="$BACKEND_PORT" DEPLOY_PATH="$DEPLOY_PATH" 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          cd "$DEPLOY_PATH"
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:$BACKEND_PORT/api/products" > /dev/null; then
+              echo "백엔드 응답 확인 (${i}회차)"
+              docker compose ps
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::150초 안에 /api/products 가 응답하지 않음"
+          docker compose ps
+          docker compose logs --tail 80 backend
+          exit 1
+          REMOTE
