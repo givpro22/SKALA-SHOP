@@ -14,32 +14,38 @@ import shop.dto.FieldError;
  * 그 예외는 서비스 메서드가 반환된 뒤 commit 시점에 발생할 수 있어 감쌀 코드가 남아 있지 않다.
  * Spring의 {@code OptimisticLockingFailureException}을 전역 핸들러에서 직접 잡는다.
  *
- * <p><b>{@code fieldErrors}는 기본적으로 {@code null}이다</b>(계약 §4.1 — {@code VALIDATION_ERROR}일
- * 때만 채워진다). 어느 필드가 틀렸는지 지목할 수 있는 예외만 두 번째 생성자로 값을 싣는다 —
- * 계약 §9.2.6이 요구하는 쿼리 파라미터 오류가 그 경우다. 필드가 특정되지 않는 실패
- * ({@code OUT_OF_STOCK} 등)에 빈 배열을 넣으면 "검증 실패인데 필드를 못 찾았다"로 읽혀 더 나쁘다.
+ * <h2>{@code fieldErrors}를 여기서 실을 수 없게 한 이유 (계약 §9.5.5)</h2>
+ *
+ * <p>계약의 불변식은 <b>{@code fieldErrors != null} ⟺ {@code code == "VALIDATION_ERROR"}</b>이며
+ * 예외가 없다. 처음에는 이 클래스에 {@code fieldErrors}를 받는 생성자를 두었는데, 그러면
+ * {@code CartStaleException}·{@code OutOfStockException} 같은 <b>다른 코드의 예외도 생성자 인자
+ * 하나만 바꾸면 불변식을 깰 수 있다.</b> 규칙은 남고 그것을 막던 구조가 사라진 상태였다.
+ *
+ * <p>그래서 {@code fieldErrors}를 나르는 능력을 {@link ValidationException} 한 곳으로 옮겼다.
+ * 그 클래스는 코드가 {@code VALIDATION_ERROR}로 <b>고정</b>되어 있으므로, 이제 불변식은 규칙이
+ * 아니라 <b>타입으로 성립한다</b> — 다른 코드의 예외는 {@code fieldErrors}를 실을 방법 자체가 없다.
+ * (계약 §9.5.5의 "구조 권고"를 채택한 것이며, 계약이 강제하는 것은 관측 결과다.)
  */
 public abstract class BusinessException extends RuntimeException {
 
 	private final transient ErrorCode errorCode;
-	private final transient List<FieldError> fieldErrors;
 
 	protected BusinessException(ErrorCode errorCode, String message) {
-		this(errorCode, message, null);
-	}
-
-	protected BusinessException(ErrorCode errorCode, String message, List<FieldError> fieldErrors) {
 		super(message);
 		this.errorCode = errorCode;
-		this.fieldErrors = fieldErrors;
 	}
 
 	public ErrorCode getErrorCode() {
 		return errorCode;
 	}
 
-	/** 없으면 {@code null}. 전역 핸들러가 그대로 응답에 싣는다. */
+	/**
+	 * 기본은 {@code null}이다(계약 §4.1 — {@code VALIDATION_ERROR}일 때만 채워진다).
+	 *
+	 * <p>{@link ValidationException}만 이 값을 덮어쓴다. <b>빈 배열을 반환하지 않는다</b> —
+	 * "검증 실패인데 필드를 못 찾았다"로 읽혀 {@code null}보다 나쁘다.
+	 */
 	public List<FieldError> getFieldErrors() {
-		return fieldErrors;
+		return null;
 	}
 }

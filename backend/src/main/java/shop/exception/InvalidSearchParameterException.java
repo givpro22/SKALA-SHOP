@@ -1,9 +1,5 @@
 package shop.exception;
 
-import java.util.List;
-
-import shop.dto.FieldError;
-
 /**
  * 계약 §9.2.1 · §9.2.6 — 상품 검색 쿼리 파라미터가 허용 집합·범위를 벗어남.
  *
@@ -16,17 +12,12 @@ import shop.dto.FieldError;
  * 오타를 낼 가능성이 가장 높은 자리인데 거기서 {@code null}을 주면 프론트가 안내할 것이 없다 —
  * {@code sort}를 enum 으로 바인딩하지 않고 {@code String}으로 받아 여기서 검증하는 이유가 이것이다.
  *
- * <p><b>{@code size} 상한을 넘긴 요청을 조용히 50으로 자르지 않고 거부한다.</b> 자르면 클라이언트는
- * 자기가 요청한 만큼 받았다고 믿는다. 상한이 아예 없으면 {@code size=100000} 한 번으로 전체
- * 테이블이 직렬화된다. 반면 <b>범위를 벗어난 {@code page}는 오류가 아니다</b> — 200 + 빈 배열이다.
+ * <p>{@link ValidationException}을 상속하므로 코드가 {@code VALIDATION_ERROR}로 고정되고
+ * {@code fieldErrors}가 필수다 — 실수로 비운 채 던질 수 없다(§9.5.5).
  */
-public class InvalidSearchParameterException extends BusinessException {
+public class InvalidSearchParameterException extends ValidationException {
 
 	public InvalidSearchParameterException(String field, Object rejectedValue, String reason) {
-		super(ErrorCode.VALIDATION_ERROR,
-				ErrorCode.VALIDATION_ERROR.defaultMessage(),
-				List.of(new FieldError(field,
-						rejectedValue == null ? null : String.valueOf(rejectedValue),
-						reason)));
+		super(field, rejectedValue, reason);
 	}
 }
