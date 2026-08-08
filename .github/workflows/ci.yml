@@ -177,8 +177,17 @@ jobs:
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
         run: |
           install -d -m 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          # tr -d '\r' 로 CR 을 걷어낸다. 키를 Windows 나 일부 편집기에서 복사하면 줄 끝에
+          # CR 이 섞여 들어오는데, 그 상태로는 openssl 이 "error in libcrypto" 로 죽는다.
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
+
+          # ssh 가 뱉는 "error in libcrypto → Permission denied (publickey)" 는 키가 깨진 건지
+          # 서버에 공개키가 없는 건지 구분되지 않는다. 여기서 먼저 갈라 둔다.
+          if ! ssh-keygen -y -f ~/.ssh/id_deploy > /dev/null 2>&1 < /dev/null; then
+            echo "::error::DEPLOY_SSH_KEY 를 개인키로 읽을 수 없다. BEGIN/END 줄을 포함한 전문이 줄바꿈까지 그대로 들어가야 한다(패스프레이즈가 걸린 키는 무인 배포에 쓸 수 없다). 재등록: gh secret set DEPLOY_SSH_KEY < ~/.ssh/키파일"
+            exit 1
+          fi
           # StrictHostKeyChecking=no 대신 keyscan 으로 호스트 키를 먼저 고정한다.
           # 검사를 끄면 중간자에게 배포 자격증명을 그대로 넘길 수 있다.
           ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
