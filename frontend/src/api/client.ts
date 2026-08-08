@@ -66,10 +66,11 @@ export class ApiError extends Error {
 }
 
 /**
- * 계약 §5 표의 22개 코드.
+ * 계약 §5 + §9.5 표의 **27개** 코드 (기존 22 + 구매 흐름 5).
  *
  * `Record<ErrorCode, true>` 로 선언했기 때문에 계약에 코드가 추가됐는데 여기에 빠지면
- * **컴파일이 실패한다.** 배열 리터럴로 두면 조용히 누락된다.
+ * **컴파일이 실패한다.** 배열 리터럴로 두면 조용히 누락된다 — 실제로 §9 확장에서
+ * 유니온에 5개를 더하자 이 객체가 그 자리에서 컴파일 오류를 냈다.
  */
 const KNOWN_ERROR_CODES: Record<ErrorCode, true> = {
   VALIDATION_ERROR: true,
@@ -94,6 +95,12 @@ const KNOWN_ERROR_CODES: Record<ErrorCode, true> = {
   UNAUTHORIZED: true,
   TOKEN_EXPIRED: true,
   DUPLICATE_USERNAME: true,
+  // 구매 흐름 (계약 §9.5)
+  CART_EMPTY: true,
+  CART_ITEM_NOT_FOUND: true,
+  CART_STALE: true,
+  FORBIDDEN: true,
+  SHOPPER_PROFILE_CONFLICT: true,
 };
 
 function isErrorCode(value: unknown): value is ErrorCode {
@@ -205,6 +212,11 @@ async function toApiError(res: Response, path: string): Promise<ApiError> {
    * 무엇이 잘못됐는지 알 수 없고, 다시 로그인할 방법도 화면에 없다.
    *
    * INVALID_CREDENTIALS 는 제외한다. 그건 로그인 시도 자체가 틀린 것이라 지울 토큰이 없다.
+   *
+   * **FORBIDDEN(403)도 반드시 제외한다** (계약 §9.4.3). 403 은 토큰이 **유효한데** 역할이
+   * 맞지 않는 것이라, 토큰을 지우고 로그인 화면으로 보내면 사용자는 다시 로그인해도
+   * 같은 일을 겪고 자기 비밀번호를 의심한다. 401 과 403 을 뭉뚱그리면 안 되는 이유가
+   * 이 한 줄이며, 여기서 조건에 `FORBIDDEN` 을 더하는 순간 그 구분이 무너진다.
    */
   if (parsed.code === 'TOKEN_EXPIRED' || parsed.code === 'UNAUTHORIZED') {
     clearToken();
@@ -284,6 +296,25 @@ export async function apiDelete(path: string): Promise<void> {
   const res = await send(path, { method: 'DELETE' });
   if (!res.ok) throw await toApiError(res, path);
   // 204 No Content — 본문을 읽지 않는다.
+}
+
+/**
+ * **본문을 돌려주는 DELETE.** 장바구니 전용이다 (계약 §9.1 `[호환성 쟁점 C-4]`).
+ *
+ * `DELETE /api/shop/cart/items/{productId}` 와 `DELETE /api/shop/cart` 는 204 가 아니라
+ * **200 + `CartResponse`** 다. 카트는 엔티티 컬렉션이 아니라 **하나의 집합 상태**여서,
+ * 라인 하나를 지워도 `totalPrice`·`checkoutable`·`unavailableItemCount` 가 함께 바뀐다.
+ * 204 를 주면 프론트가 반드시 재조회해야 하고, 그 사이 다른 탭이 카트를 바꾸면 화면이 어긋난다.
+ *
+ * **`apiDelete` 와 합치지 않은 이유가 대칭이다.** 하나로 합쳐 "본문이 있으면 읽는다"로 두면,
+ * 엔티티 삭제(204 + 0바이트)에서 파싱 예외가 나거나 — 그걸 피하려고 예외를 삼키면 —
+ * 카트 삭제에서 응답이 조용히 유실된다. 상태코드가 다른 두 계약을 함수 하나가 겸하면
+ * 어느 쪽이든 한쪽이 틀린다.
+ */
+export async function apiDeleteFor<T>(path: string): Promise<T> {
+  const res = await send(path, { method: 'DELETE' });
+  if (!res.ok) throw await toApiError(res, path);
+  return readJson<T>(res, path);
 }
 
 /** catch 블록의 `unknown` 을 화면이 쓸 수 있는 `ApiError` 로 좁힌다. */

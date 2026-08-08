@@ -976,3 +976,57 @@ body:has(.authbar .block--alert) .page .block:not(.block--alert) {
   border-color: var(--color-hairline);
   color: var(--color-ink);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   구매 흐름 (계약 §9) — **구조만** 잡는다.
+   시각 정리(간격·위계·컬러블록 배치)는 design 단계 소관이며, 여기서는 기능이
+   실행 검증될 수 있는 최소한의 레이아웃만 둔다. 순서를 뒤집으면 화면이 안 뜰 때
+   원인이 기능인지 스타일인지 갈라내는 데 시간이 다 든다.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 검색·정렬 폼. 기본 .form 은 세로 스택이라 한 줄에 놓으려면 방향만 바꾸면 된다. */
+.form--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  max-width: none;
+}
+/*
+ * `.form label` 이 세로 스택이라 라벨이 입력 위에 온다. 검색 줄에서는 그대로 두되
+ * (라벨을 옆에 붙이면 390px 에서 입력 폭이 남지 않는다) `.inline-field` 의
+ * `align-items: center` 만 되돌린다 — 세로 스택에서 그 값은 입력을 가운데로 좁힌다.
+ */
+.form--inline .inline-field {
+  align-items: stretch;
+}
+.form--inline .inline-field input[type='search'] {
+  min-width: 240px;
+}
+.form--inline .form__actions {
+  align-items: flex-end;
+}
+
+/*
+ * 페이지 이동 줄. `.actions` 는 오른쪽 정렬 + `.btn { flex: 1 1 auto }` 라 버튼이 늘어난다.
+ * 여기서는 이전/다음이 페이지 표시를 사이에 두고 붙어 있어야 하므로 그 둘을 되돌린다.
+ * `.actions` 자체를 고치면 관리 화면의 표 안 버튼 정렬까지 바뀐다.
+ */
+.actions--pager {
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.actions--pager .btn {
+  flex: 0 0 auto;
+}
+
+/*
+ * 영역 안내(관리 영역의 읽기 전용 · 스토어 영역의 ADMIN 차단).
+ *
+ * `.app__body` 는 flex 가 아니라 이 문단과 `.page` 가 그냥 블록 형제다 — 아래 여백을
+ * 주지 않으면 다음 페이지의 eyebrow 와 겹쳐 붙는다.
+ */
+.role-notice {
+  margin-bottom: var(--space-section);
+}

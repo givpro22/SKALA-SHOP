@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ApiError } from '../api/client';
 import { ERROR_UX } from '../lib/errorUx';
 
@@ -5,7 +6,20 @@ interface Props {
   error: ApiError;
   /** 재시도 가능한 코드일 때만 버튼이 노출된다. */
   onRetry?: () => void;
+  /**
+   * **재시도가 아닌 복구 동작.** `ERROR_UX[code].recoverLabel` 이 있을 때만 버튼이 나온다.
+   * `CART_STALE` 의 "장바구니 새로고침"이 그것이며, `onRetry` 와 동시에 그려지는 코드는 없다.
+   */
+  onRecover?: () => void;
   onDismiss?: () => void;
+  /**
+   * 배너 **안에** 그릴 추가 내용.
+   *
+   * 밖에 별도 블록으로 두지 않는 이유가 둘이다. (1) 실패의 맥락(§9.5.4 의 두 금액 같은)은
+   * 그 실패와 한 덩어리로 읽혀야 한다. (2) 디자인 시스템이 "한 뷰포트에 유색 블록 하나"를
+   * 요구하므로, 배너 옆에 또 하나를 세우면 그 규칙이 깨진다.
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -17,7 +31,7 @@ interface Props {
  * - 재시도 버튼: `ERROR_UX[code].retryable` 이 true 일 때만. 계약 §5.1 이 규정한
  *   CONCURRENT_UPDATE / OUT_OF_STOCK 의 분기가 여기서 드러난다.
  */
-export function ErrorBanner({ error, onRetry, onDismiss }: Props) {
+export function ErrorBanner({ error, onRetry, onRecover, onDismiss, children }: Props) {
   const ux = ERROR_UX[error.code];
 
   return (
@@ -35,6 +49,8 @@ export function ErrorBanner({ error, onRetry, onDismiss }: Props) {
       </div>
 
       <p className="banner__message">{error.message}</p>
+
+      {children}
 
       {error.fieldErrors !== null && error.fieldErrors.length > 0 && (
         <ul className="banner__fields">
@@ -57,7 +73,26 @@ export function ErrorBanner({ error, onRetry, onDismiss }: Props) {
           )}
         </div>
       ) : (
-        ux.hint !== '' && <p className="banner__hint">{ux.hint}</p>
+        <>
+          {ux.hint !== '' && <p className="banner__hint">{ux.hint}</p>}
+          {/*
+            재시도가 아닌 복구 버튼. `retryable` 이 false 인 코드만 여기 들어오므로
+            "다시 시도"와 이 버튼이 한 배너에 동시에 뜨는 일은 구조적으로 없다.
+            CART_STALE 에서 이 둘이 섞이면 사용자가 무한 실패하는 쪽을 누르게 된다.
+          */}
+          {ux.recoverLabel !== null && onRecover && (
+            <div className="banner__actions">
+              <button
+                type="button"
+                className="btn btn--retry"
+                data-recover-for={error.code}
+                onClick={onRecover}
+              >
+                {ux.recoverLabel}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
