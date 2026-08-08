@@ -1,5 +1,6 @@
 package shop.exception;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -67,19 +68,29 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.of(code, code.defaultMessage(), request.getRequestURI()));
 	}
 
-	/** {@code @Valid @RequestBody} 검증 실패. 필드 오류를 모아 내린다. */
+	/**
+	 * {@code @Valid @RequestBody} 검증 실패. 필드 오류를 모아 내린다.
+	 *
+	 * <p><b>객체 수준 오류도 함께 걷는다.</b> 클래스 단위 제약(두 필드의 상호 관계 검증 등)은
+	 * {@code getFieldErrors()}가 아니라 {@code getGlobalErrors()}에 담긴다. 필드 오류만 보면
+	 * 그런 요청에서 목록이 비어 {@code fieldErrors: []}가 나가는데, 계약 §9.5.5는 빈 배열을
+	 * 금지한다 — "검증 실패인데 필드를 못 찾았다"로 읽혀 {@code null}보다 나쁘기 때문이다.
+	 */
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException e,
 			HttpServletRequest request) {
-		List<FieldError> fieldErrors = e.getBindingResult().getFieldErrors().stream()
+		List<FieldError> fieldErrors = new ArrayList<>(e.getBindingResult().getFieldErrors().stream()
 				.map(fe -> new FieldError(
 						fe.getField(),
 						fe.getRejectedValue() == null ? null : String.valueOf(fe.getRejectedValue()),
 						fe.getDefaultMessage()))
-				.toList();
-		ErrorCode code = ErrorCode.VALIDATION_ERROR;
-		return ResponseEntity.status(code.status())
-				.body(ErrorResponse.of(code, code.defaultMessage(), request.getRequestURI(), fieldErrors));
+				.toList());
+
+		e.getBindingResult().getGlobalErrors().stream()
+				.map(ge -> new FieldError(ge.getObjectName(), null, ge.getDefaultMessage()))
+				.forEach(fieldErrors::add);
+
+		return validationResponse(fieldErrors, request);
 	}
 
 	/**
@@ -95,9 +106,31 @@ public class GlobalExceptionHandler {
 						v.getInvalidValue() == null ? null : String.valueOf(v.getInvalidValue()),
 						v.getMessage()))
 				.toList();
+		return validationResponse(fieldErrors, request);
+	}
+
+	/**
+	 * {@code VALIDATION_ERROR} 응답을 만드는 <b>유일한 자리</b>. 계약 §9.5.5의 빈 배열 금지를
+	 * 여기서 지킨다.
+	 *
+	 * <p>예외 계층은 {@code ValidationException}이 생성자에서 빈 목록을 거부해 불변식을 지키지만,
+	 * <b>이 두 핸들러는 예외 계층을 거치지 않고 응답을 직접 조립한다</b> — Spring 이 던진
+	 * {@code MethodArgumentNotValidException}·{@code ConstraintViolationException}을 옮겨 담기
+	 * 때문이다. 그래서 객체 수준 제약만 걸린 요청에서 목록이 빌 수 있고, 그때 {@code fieldErrors: []}가
+	 * 그대로 나간다. 조립 지점을 하나로 모아 마지막 방어를 건다.
+	 *
+	 * <p>비면 <b>요청 전체</b>를 지목하는 항목 하나를 넣는다. {@code null}로 떨어뜨리지 않는 이유는
+	 * 그것이 방향 2 위반이기 때문이고, 빈 배열로 두지 않는 이유는 그것이 {@code null}보다 나쁘기
+	 * 때문이다 — <b>둘 다 피하는 값은 "무엇이 틀렸는지 최소한 말해 주는 항목 하나"뿐이다.</b>
+	 */
+	private ResponseEntity<ErrorResponse> validationResponse(List<FieldError> fieldErrors,
+			HttpServletRequest request) {
 		ErrorCode code = ErrorCode.VALIDATION_ERROR;
+		List<FieldError> body = fieldErrors.isEmpty()
+				? List.of(new FieldError("request", null, code.defaultMessage()))
+				: fieldErrors;
 		return ResponseEntity.status(code.status())
-				.body(ErrorResponse.of(code, code.defaultMessage(), request.getRequestURI(), fieldErrors));
+				.body(ErrorResponse.of(code, code.defaultMessage(), request.getRequestURI(), body));
 	}
 
 	/** JSON 파싱 불가 / 본문 타입 불일치. */
