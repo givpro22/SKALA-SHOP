@@ -45,7 +45,7 @@ export default function App() {
 
   const auth = useAuth();
   const shopper = useShopper(auth.loggedIn);
-  const role = toRoleView(shopper.data ?? null, shopper.loading);
+  const role = toRoleView(shopper.data ?? null);
 
   // 카트는 SHOPPER 만 부를 수 있다. ADMIN 이 부르면 403, 비로그인이면 401 이며 둘 다
   // 정상 상태다 — 그래서 요청 자체를 내지 않는다(§9.4.2).
@@ -53,7 +53,13 @@ export default function App() {
 
   const cartCount = shopper.data?.cartItemCount ?? 0;
 
-  /** 카트나 주문이 바뀌면 헤더의 배지·잔액을 다시 읽는다. */
+  /**
+   * 카트나 주문이 바뀌면 헤더의 배지·잔액을 다시 읽는다.
+   *
+   * <p>헤더가 읽는 값(`cartItemCount`·`point`)의 출처는 카트가 아니라 `/api/shop/me` 다.
+   * 그래서 **카트를 바꾸는 모든 경로가 이걸 함께 불러야 한다** — 담기·수량·삭제·비우기는
+   * 페이지가, 체크아웃은 `useCheckout` 이 부른다(성공을 아는 곳이 그 훅뿐이다).
+   */
   function refreshShopper() {
     shopper.reload();
   }
@@ -182,14 +188,11 @@ export default function App() {
                 <CheckoutPage
                   cart={cart}
                   shopper={shopper.data ?? null}
-                  onOrdered={() => {
-                    refreshShopper();
-                    setStoreTab('browse');
-                  }}
-                  onGoOrders={() => {
-                    refreshShopper();
-                    setStoreTab('orders');
-                  }}
+                  onCheckedOut={refreshShopper}
+                  // 아래 둘은 **이동만** 한다. 갱신은 주문이 성공한 순간에 이미 끝났고,
+                  // 여기서 또 부르면 같은 요청이 한 번 더 나갈 뿐이다.
+                  onOrdered={() => setStoreTab('browse')}
+                  onGoOrders={() => setStoreTab('orders')}
                 />
               </ShopperGate>
             )}

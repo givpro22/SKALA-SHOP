@@ -8,6 +8,12 @@ import type { ShopperResponse } from '../types/api';
 interface Props {
   cart: CartState;
   shopper: ShopperResponse | null;
+  /**
+   * 주문이 성공한 **직후** 구매자 프로필을 다시 읽는다. 헤더의 장바구니 배지·포인트가
+   * 여기서 나오므로, 아래 두 콜백(사용자가 버튼을 눌러야 실행된다)에 맡길 수 없다 —
+   * 완료 화면이 떠 있는 동안 헤더가 결제 전 값을 보이게 된다.
+   */
+  onCheckedOut: () => void;
   onOrdered: () => void;
   onGoOrders: () => void;
 }
@@ -22,8 +28,8 @@ interface Props {
  * <p>이 화면은 **열어 보는 것만으로는 카트를 소비하지 않는다.** 결제 버튼을 눌러야
  * `POST /api/shop/orders` 가 나간다.
  */
-export function CheckoutPage({ cart, shopper, onOrdered, onGoOrders }: Props) {
-  const checkout = useCheckout(cart);
+export function CheckoutPage({ cart, shopper, onCheckedOut, onOrdered, onGoOrders }: Props) {
+  const checkout = useCheckout(cart, onCheckedOut);
 
   // 주문이 성공했으면 완료 화면만 그린다. 이 시점의 카트는 비어 있어, 주문서를 함께
   // 보여주면 방금 산 것이 사라진 빈 목록이 나란히 뜬다.

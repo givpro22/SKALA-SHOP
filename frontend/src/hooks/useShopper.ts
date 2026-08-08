@@ -32,15 +32,27 @@ export function useShopper(loggedIn: boolean): AsyncState<ShopperResponse | null
  * 전자는 잠깐 기다리면 되고 후자는 영원히 아니다 — 화면이 취할 행동이 다르다.
  */
 export interface RoleView {
-  /** 아직 판정할 수 없다 (미로그인이거나 응답 대기 중). */
+  /** 아직 **한 번도** 판정하지 못했다 (미로그인이거나 첫 응답 대기 중). */
   unknown: boolean;
   isAdmin: boolean;
   isShopper: boolean;
   role: UserRole | null;
 }
 
-export function toRoleView(shopper: ShopperResponse | null, loading: boolean): RoleView {
-  if (loading || shopper === null) {
+/**
+ * **`loading` 을 보지 않는다 — `shopper === null` 인지만 본다.**
+ *
+ * <p>예전에는 `loading || shopper === null` 이었는데, 그러면 `reload()` 로 헤더를 갱신할 때마다
+ * 역할이 잠깐 `unknown` 으로 되돌아간다. 그 사이 `ShopperGate` 는 자식을 "계정 정보를 확인하는
+ * 중…" 으로 갈아치우므로 **장바구니·주문서·내 주문 화면이 통째로 언마운트되고 그 안의 상태가
+ * 사라진다.** 체크아웃에서는 방금 받은 주문 완료 화면이 그렇게 날아갔다.
+ *
+ * <p>구분해야 하는 것은 두 가지다 — **아직 모르는 것**(첫 응답 대기)과 **다시 확인하는
+ * 것**(재조회). 후자에는 이미 답이 있고, 역할은 같은 계정이 로그인해 있는 동안 바뀌지 않는다.
+ * 로그아웃하면 `useShopper` 가 `null` 을 채우므로 `unknown` 으로 정확히 되돌아간다.
+ */
+export function toRoleView(shopper: ShopperResponse | null): RoleView {
+  if (shopper === null) {
     return { unknown: true, isAdmin: false, isShopper: false, role: null };
   }
   return {

@@ -88,8 +88,23 @@ export interface CheckoutState {
  * 총액은 이미 달라졌다. 같은 `expectedTotalPrice` 를 다시 보내면 **반드시 같은 409 가 온다.**
  * `refreshCart()` 는 카트를 다시 읽어 화면 금액을 갱신할 뿐 주문을 보내지 않는다 —
  * 새 총액을 사용자가 보고 **다시 판단한 뒤** 결제를 누르는 것이 이 코드가 요구하는 흐름이다.
+ *
+ * <h3>성공하면 카트와 <b>구매자 프로필</b>을 둘 다 무효화한다</h3>
+ *
+ * 체크아웃 한 번이 서버에서 **세 가지**를 바꾼다 — 카트 비우기·포인트 차감·재고 차감(BR-29).
+ * 그런데 화면에서 이 셋을 읽는 곳이 둘로 나뉜다: 카트 화면은 `GET /api/shop/cart`, **헤더의
+ * 장바구니 배지와 포인트는 `GET /api/shop/me`** 다. 카트만 다시 읽으면 헤더는 옛 값에 머문다.
+ *
+ * **그 상태가 특히 나쁜 이유는 한 프레임이 스스로 모순되기 때문이다.** 주문 완료 화면 본문은
+ * "장바구니는 주문과 같은 트랜잭션에서 비워졌습니다"라고 쓰는데 바로 위 헤더는 `장바구니 1` 을
+ * 보인다. 서버는 처음부터 옳았고 화면만 두 시점을 섞어 그린 것인데, 사용자는 그것을 **결제가
+ * 되지 않았다**는 뜻으로 읽는다. 새로고침해야 실제 값이 나오는 화면은 결제 화면으로서 실격이다.
+ *
+ * @param onCheckedOut 성공 직후 구매자 프로필(`/api/shop/me`)을 다시 읽는 경로. 페이지가 아니라
+ *   **이 훅이 부른다** — 성공을 아는 곳이 여기뿐이고, 호출부에 맡기면 완료 화면을 그리는 경로
+ *   하나만 빠뜨려도 같은 모순이 되살아난다.
  */
-export function useCheckout(cart: CartState): CheckoutState {
+export function useCheckout(cart: CartState, onCheckedOut: () => void): CheckoutState {
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [stale, setStale] = useState<StaleTotals | null>(null);
@@ -112,6 +127,11 @@ export function useCheckout(cart: CartState): CheckoutState {
       // 성공하면 서버가 같은 트랜잭션에서 카트를 비웠다(BR-29). 화면도 그 사실을 반영해야
       // "주문했는데 장바구니에 그대로 남아 있는" 상태가 되지 않는다.
       await cart.refetch();
+      // 헤더의 장바구니 배지·포인트는 카트가 아니라 `/api/shop/me` 에서 온다. 위의 refetch 는
+      // 그 값을 건드리지 않으므로, 여기서 함께 무효화하지 않으면 완료 화면과 헤더가 서로
+      // 다른 시점을 그린다. 포인트를 `point - totalPrice` 로 계산해 넣지 않는 이유는 그 순간
+      // 화면이 서버와 무관한 자체 산수를 갖게 되기 때문이다 — 잔액의 근거는 서버 하나여야 한다.
+      onCheckedOut();
     } catch (cause: unknown) {
       const apiError = asApiError(cause);
       setError(apiError);
@@ -130,7 +150,7 @@ export function useCheckout(cart: CartState): CheckoutState {
     } finally {
       setPending(false);
     }
-  }, [cart]);
+  }, [cart, onCheckedOut]);
 
   const refreshCart = useCallback(async (): Promise<void> => {
     await cart.refetch();
