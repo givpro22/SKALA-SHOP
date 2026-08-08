@@ -62,6 +62,18 @@ public class SecurityConfig {
 						.requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
 						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
 
+						/*
+						 * 계약 §8.5 는 이 경로를 "인증 필요"로 규정한다. **아래 GET /api/** permitAll 보다
+						 * 반드시 위에 있어야 한다** — 아래에 두면 그것이 먼저 매치해 경로가 공개가 되고,
+						 * 토큰 없는 요청이 컨트롤러까지 도달한다.
+						 *
+						 * 그때 나가는 코드는 401 INVALID_CREDENTIALS 였다. 상태코드는 같지만 뜻이 다르다 —
+						 * INVALID_CREDENTIALS 는 "아이디나 비밀번호가 틀렸다"이므로, code 로 분기하는 프론트는
+						 * **로그인한 적 없는 사용자에게 "아이디/비밀번호가 틀렸습니다"를 보여주고** 사용자는
+						 * 맞는 비밀번호를 계속 다시 넣게 된다. 필요한 안내는 "로그인이 필요합니다"다.
+						 */
+						.requestMatchers("/api/auth/me").authenticated()
+
 						// 카탈로그는 비로그인도 본다(계약 §9.4.2). 아래 SHOPPER 규칙보다 먼저 와야 한다.
 						.requestMatchers(HttpMethod.GET, "/api/shop/products").permitAll()
 						/*
