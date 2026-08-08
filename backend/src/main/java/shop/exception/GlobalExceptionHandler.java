@@ -38,8 +38,13 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e, HttpServletRequest request) {
 		ErrorCode code = e.getErrorCode();
+		/*
+		 * fieldErrors 는 대부분 null 이고, 어느 필드가 틀렸는지 지목할 수 있는 예외만 값을 싣는다
+		 * (계약 §9.2.6 의 쿼리 파라미터 오류). null 을 그대로 넘기면 키는 남고 값만 null 이 되어
+		 * 계약 §0.4("값이 없어도 키는 생략하지 않는다")를 지킨다.
+		 */
 		return ResponseEntity.status(code.status())
-				.body(ErrorResponse.of(code, e.getMessage(), request.getRequestURI()));
+				.body(ErrorResponse.of(code, e.getMessage(), request.getRequestURI(), e.getFieldErrors()));
 	}
 
 	/**

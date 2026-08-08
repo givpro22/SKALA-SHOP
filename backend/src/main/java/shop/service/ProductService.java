@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import shop.domain.Product;
 import shop.dto.ProductCreateRequest;
+import shop.dto.ProductPageResponse;
 import shop.dto.ProductResponse;
+import shop.dto.ProductSearchQuery;
 import shop.dto.ProductUpdateRequest;
 import shop.exception.DuplicateProductNameException;
 import shop.exception.ProductInUseException;
@@ -53,6 +55,22 @@ public class ProductService {
 
 	public ProductResponse findById(Long id) {
 		return ProductResponse.from(getProductOrThrow(id));
+	}
+
+	/**
+	 * 계약 §9.1 — 구매자용 상품 검색·정렬·페이지네이션.
+	 *
+	 * <p><b>기존 {@link #findAll()}에 파라미터를 붙이지 않고 메서드를 나눴다.</b> 붙이면 같은 경로가
+	 * 파라미터 유무에 따라 배열과 객체를 오가고, 프론트 타입이 {@code ProductResponse[] |
+	 * ProductPageResponse}가 되어 기존 관리 화면·QA 체크리스트가 전부 흔들린다. 새 경로를 만드는
+	 * 비용이 기존 경로를 다형적으로 만드는 비용보다 훨씬 싸다({@code [호환성 쟁점 C-3]}).
+	 *
+	 * <p>검증(정렬 축·크기 상한·검색어 길이)은 {@link ProductSearchQuery}가 이미 끝냈다. 여기서
+	 * 다시 판정하지 않는다 — 두 곳에서 판정하면 언젠가 한쪽만 고쳐진다.
+	 */
+	public ProductPageResponse search(ProductSearchQuery query) {
+		return ProductPageResponse.from(
+				productRepository.findByNameContainingIgnoreCase(query.keyword(), query.toPageRequest()));
 	}
 
 	/**
