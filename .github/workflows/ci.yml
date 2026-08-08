@@ -160,9 +160,14 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          # 계약 §9.4.5. ADMIN 0건인 서버에서 이 값이 없으면 백엔드가 기동에 실패한다.
+          # 여기서 먼저 멈추는 편이 낫다 — 배포가 끝난 뒤 컨테이너 로그를 뒤지는 것보다
+          # "무엇을 등록해야 하는지"가 이 단계에서 이름으로 나온다.
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           missing=""
-          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY JWT_SECRET MYSQL_ROOT_PASSWORD; do
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY JWT_SECRET MYSQL_ROOT_PASSWORD ADMIN_USERNAME ADMIN_PASSWORD; do
             [ -z "${!name}" ] && missing="$missing $name"
           done
           if [ -n "$missing" ]; then
@@ -217,6 +222,11 @@ jobs:
           MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'skalashop' }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_EXPIRATION_SECONDS: ${{ vars.JWT_EXPIRATION_SECONDS || '3600' }}
+          # 계약 §9.4.5. 서버 .env 는 매 배포마다 새로 쓰이므로, 여기에 없으면
+          # **재배포할 때마다 값이 사라진다.** 지금은 ADMIN 이 이미 있어 조용히 넘어가지만,
+          # DB 를 새로 만드는 순간(볼륨 교체·신규 서버) 기동이 끊긴다.
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           # 빈 MySQL 첫 기동에는 update 가 필요하고, 스키마가 굳은 뒤에는 validate 로 조인다.
           DDL_AUTO: ${{ vars.DDL_AUTO || 'update' }}
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
@@ -240,6 +250,8 @@ jobs:
           MYSQL_DATABASE=$MYSQL_DATABASE
           JWT_SECRET=$JWT_SECRET
           JWT_EXPIRATION_SECONDS=$JWT_EXPIRATION_SECONDS
+          ADMIN_USERNAME=$ADMIN_USERNAME
+          ADMIN_PASSWORD=$ADMIN_PASSWORD
           DDL_AUTO=$DDL_AUTO
           CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS
           BACKEND_PORT=$BACKEND_PORT
@@ -266,20 +278,53 @@ jobs:
           BACKEND_PORT: ${{ vars.BACKEND_PORT || '8080' }}
         # up -d 는 컨테이너가 "떴다"까지만 보장한다. 백엔드가 DB 연결 실패나
         # ProdEnvironmentGuard(JWT_SECRET 누락)로 죽어도 배포는 초록으로 끝나 버린다.
+        #
+        # **curl 한 번으로 판정하지 않는다 (계약 §9.4.5, devops 실측).**
+        # AdminBootstrapRunner 의 판정은 DB 를 읽어야 해서 Tomcat 이 뜬 뒤에 실행된다.
+        # 실패해도 그 사이 **101ms 동안 /api/products 가 200 을 준다.** 예전처럼 5초마다
+        # curl 해서 한 번 맞으면 exit 0 하는 방식은, 그 창을 잡는 순간 **죽은 배포를 초록으로**
+        # 끝낸다(60초에 5436회 폴링해서 200 이 2회 나왔다 — 우연이 아니라 재현되는 확률이다).
+        #
+        # 그래서 세 가지로 바꿨다.
+        #   1) 컨테이너가 exited/dead 면 **즉시 실패한다** — 남은 시간을 기다릴 이유가 없다
+        #   2) 응답이 아니라 **헬스체크 상태**로 판정한다
+        #   3) healthy 를 **연속 2회** 요구한다 — start_period 중에는 헬스체크가 한 번만 성공해도
+        #      즉시 healthy 가 되므로, 그 101ms 창을 헬스체크가 맞으면 순간 healthy 가 될 수 있다.
+        #      재시작을 반복하는 컨테이너는 5초 간격 두 번을 연속으로 통과하지 못한다.
         run: |
           ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
             BACKEND_PORT="$BACKEND_PORT" DEPLOY_PATH="$DEPLOY_PATH" 'bash -s' <<'REMOTE'
           set -uo pipefail
           cd "$DEPLOY_PATH"
+
+          inspect() { docker inspect skala-shop-backend --format "$1" 2>/dev/null || echo "?"; }
+          streak=0
           for i in $(seq 1 30); do
-            if curl -fsS "http://localhost:$BACKEND_PORT/api/products" > /dev/null; then
-              echo "백엔드 응답 확인 (${i}회차)"
-              docker compose ps
-              exit 0
+            state=$(inspect '{{.State.Status}}')
+            health=$(inspect '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}')
+            restarts=$(inspect '{{.RestartCount}}')
+            echo "  ${i}회차: state=$state health=$health restarts=$restarts"
+
+            if [ "$state" = "exited" ] || [ "$state" = "dead" ]; then
+              echo "::error::백엔드 컨테이너가 종료됨 (exit=$(inspect '{{.State.ExitCode}}')). 로그를 확인하라 — ADMIN_USERNAME/ADMIN_PASSWORD 누락이면 부트스트랩(계약 §9.4.5) 실패다"
+              streak=-1
+              break
+            fi
+
+            if [ "$health" = "healthy" ]; then
+              streak=$((streak + 1))
+              if [ "$streak" -ge 2 ]; then
+                echo "백엔드 healthy 연속 2회 확인 (${i}회차, 재시작 ${restarts}회)"
+                docker compose ps
+                exit 0
+              fi
+            else
+              streak=0
             fi
             sleep 5
           done
-          echo "::error::150초 안에 /api/products 가 응답하지 않음"
+
+          [ "$streak" -ge 0 ] && echo "::error::150초 안에 백엔드가 healthy 로 안정되지 않음"
           docker compose ps
           docker compose logs --tail 80 backend
           exit 1

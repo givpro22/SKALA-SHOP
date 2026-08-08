@@ -41,6 +41,16 @@ services:
       # application.yml 의 개발용 기본값으로 뜨면 토큰 위조가 가능한 배포본이 된다.
       JWT_SECRET: ${JWT_SECRET:?required}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-3600}
+      # ADMIN 부트스트랩 자격증명 (계약 §9.4.5). 기본값을 주지 않는다.
+      #
+      # JWT_SECRET 과 달리 `:?required` 를 쓰지 않는다 — 계약은 이 값을 **ADMIN 0건일 때만**
+      # 필수로 규정한다. 여기서 하드 요구하면 이미 ADMIN 이 있는 서버가 변수 하나 없다는
+      # 이유로 재배포에서 기동조차 못 한다. 빈 값으로 넘기고 판정은 AdminBootstrapRunner 가 한다.
+      #
+      # 값이 없고 ADMIN 도 0건이면 러너가 IllegalStateException 으로 기동을 끊는다.
+      # 그 실패는 **헬스체크가 아니라 종료 코드로만** 보인다 — restart 정책 관련 주의는 아래 참조.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -52,7 +62,11 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
-    restart: unless-stopped
+    # 루트 compose 와 같은 이유로 on-failure:5 다(실측 근거는 그쪽 주석과 배포 노트 §라운드 17).
+    # 요지: AdminBootstrapRunner 실패는 Tomcat 이 뜬 뒤에 나므로 **101ms 동안 API 가 산다.**
+    # unless-stopped 면 그 창이 ~9초마다 영원히 다시 열려, 밖에서 curl 하는 배포 검증이
+    # 운 좋게 200 을 받고 초록으로 끝난다. on-failure:5 는 exited(1) 로 상태를 확정시킨다.
+    restart: on-failure:5
 
   frontend:
     # VITE_API_BASE_URL 은 이 이미지 안에 이미 구워져 있다(빌드 시점 인라인).

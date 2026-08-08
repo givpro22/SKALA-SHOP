@@ -52,6 +52,18 @@ services:
       # 여기서 빈 값으로 넘겨 기본값을 덮고, ProdEnvironmentGuard 가 기동을 실패시킨다.
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-3600}
+      # ADMIN 부트스트랩 자격증명 (계약 §9.4.5). **기본값을 주지 않는다** — JWT_SECRET 과 같은 취급이다.
+      #
+      # 시드는 @Profile("local") 이라 prod 에는 ADMIN 을 만드는 경로가 없었다. 그래서
+      # 깨끗한 배포는 카탈로그를 채울 수 없는 채로 뜬다 — 기동·헬스체크·조회 API 가 전부
+      # 정상이라 **설정이 틀렸다는 신호가 어디에도 없는** 종류의 실패다.
+      #
+      # `:?required` 로 강제하지 않는 이유: 계약 §9.4.5 는 이 값을 **ADMIN 0건일 때만** 필수로
+      # 규정한다. compose 에서 하드 요구하면 이미 ADMIN 이 있는 정상 배포도 변수가 없다는
+      # 이유로 기동이 막혀 계약보다 엄격해진다. 빈 값으로 넘기고 **판정은 앱이 한다**
+      # (AdminBootstrapRunner: 0건인데 비어 있으면 기동 실패, 1건 이상이면 무시).
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -64,7 +76,19 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
-    restart: unless-stopped
+    # unless-stopped 가 아니라 on-failure:5 다. **설정 오류에는 무한 재시작이 해롭다.**
+    #
+    # AdminBootstrapRunner 의 판정은 DB 를 읽어야 해서 러너 단계에 있고, 그때는 Tomcat 이 이미 떠 있다.
+    # 실측(자격증명 없이 기동): Started 23:25:00.011 -> run failed 23:25:00.112 — **101ms 동안 API 가 산다.**
+    # unless-stopped 면 이 창이 ~9초마다 **영원히** 다시 열려서, 60초에 5436회 폴링했더니 200 이 2회 나왔다.
+    # 그동안 health 는 healthy 가 되지 못하고 계속 starting 에 머문다(start_period 30s 가 지나기 전에
+    # 재시작하므로 retries 가 쌓이지 않는다). 즉 `docker compose ps` 는 "이제 막 뜨는 중"처럼 보이고,
+    # 밖에서 curl 하는 쪽은 운 좋으면 200 을 받는다 — **고장난 배포가 정상으로 보인다.**
+    #
+    # on-failure:5 면 다섯 번 뒤 컨테이너가 exited(1) 로 **멈춰서** 상태가 확정된다.
+    # 일시적 실패(DB 순단)에는 여전히 5회 재시도가 남고, 영구적 설정 오류는 되풀이되지 않는다.
+    # 종료 코드로 판정하라는 계약 §9.4.5 의 요구가 정책으로 성립하려면 멈추는 상태가 있어야 한다.
+    restart: on-failure:5
 
   frontend:
     build:
