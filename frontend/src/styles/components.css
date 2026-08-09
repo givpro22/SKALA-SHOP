@@ -999,6 +999,15 @@
   letter-spacing: var(--ls-body-sm);
   font-weight: var(--weight-body-sm);
   white-space: nowrap;
+  /*
+   * 헤더가 좁아지면 **여기가 줄어든다.** 이메일은 끝이 잘려도 누구인지 읽히지만,
+   * 내비게이션 버튼이 잘리면 무엇을 누를 수 있는지가 사라진다(layout.css 의
+   * `.app__head .tabs` 주석 참조). `min-width: 0` 이 없으면 flex 항목의 기본
+   * 최소 폭이 내용 크기라 축소 자체가 일어나지 않는다.
+   */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /*
