@@ -29,6 +29,14 @@ import shop.exception.ErrorCode;
  * 새 {@link ErrorCode} 는 아무것도 하지 않아도 자동으로 집계된다. 실제로 이 프로젝트는 에러 코드가
  * 27개고, 규칙마다 심었다면 27군데를 손대고 그중 몇 개는 빠졌을 것이다.
  *
+ * <p><b>단, "자동으로 집계된다"는 서비스 계층에서 발생하는 코드에 한한다.</b>
+ * {@code VALIDATION_ERROR}·{@code MALFORMED_REQUEST}·{@code TYPE_MISMATCH}·
+ * {@code ENDPOINT_NOT_FOUND} 는 증가분이 <b>0</b> 이며, 그것이 맞다 — 요청 본문 파싱·{@code @Valid}
+ * 검증·핸들러 탐색은 <b>서비스에 닿기 전</b>에 끝나므로 이 포인트컷을 지나가지 않는다. 그 넷은
+ * 클라이언트가 잘못 보낸 것이지 <b>도메인 규칙이 발동한 것이 아니다.</b> 이 카운터가 답하는 질문은
+ * <b>"비즈니스 규칙이 몇 번 발동했나"이지 "요청이 몇 번 실패했나"가 아니다</b> — 후자를 알고 싶으면
+ * {@code http.server.requests} 의 {@code status} 태그를 보면 되고, 그건 Actuator 가 이미 준다.
+ *
  * <p>이름은 {@code shop.rule.rejected} 하나, 구분은 태그({@code code}) 하나다. 코드마다 메트릭
  * 이름을 만들면 이름이 27개로 늘고 <b>합계를 낼 수 없다</b>.
  *
