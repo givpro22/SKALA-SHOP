@@ -141,7 +141,7 @@ public class LocalSeedRunner implements CommandLineRunner {
 				Product.create("FHD 웹캠", "1080p 30fps, 자동 초점", 55_000, 12, "/products/webcam.jpg"),
 				// choi 카트 — 체크아웃 성공 재현용.
 				Product.create("블루투스 스피커", "20W, IPX7 방수", 78_000, 18, "/products/speaker.jpg"),
-				Product.create("노트북 거치대", "알루미늄, 6단 각도", 32_000, 25, "/products/laptopstand.png"),
+				Product.create("노트북 거치대", "알루미늄, 6단 각도", 32_000, 25, "/products/laptopstand.jpg"),
 				Product.create("USB 콘덴서 마이크", "카디오이드, 헤드폰 모니터링", 120_000, 9, "/products/microphone.jpg"),
 				Product.create("모니터 암 싱글", "가스 스프링, VESA 100", 95_000, 7, "/products/monitorarm.jpg"),
 				Product.create("외장 SSD 1TB", "USB 3.2 Gen2, 1050MB/s", 135_000, 20, "/products/ssd.jpg"),
