@@ -1,5 +1,8 @@
 package shop.config;
 
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
+import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.actuate.info.InfoEndpoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -61,6 +64,27 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
 						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+
+						/*
+						 * ── Actuator. 좁은 것(health·info) 먼저, 넓은 것(나머지 전부) 나중. ──
+						 *
+						 * 순서를 뒤집으면 toAnyEndpoint() 가 health 까지 삼켜 **컨테이너 헬스체크가
+						 * 401 을 받는다.** 그 증상은 "배포가 영원히 끝나지 않는다"로 나타나서 원인이
+						 * 애플리케이션에 있는 것처럼 보인다 — 이 파일 아래쪽 `GET /api/**` 가
+						 * `/api/shop/**` 을 삼켰던 것과 같은 종류의 사고다.
+						 *
+						 * **경로 문자열("/actuator/**")이 아니라 EndpointRequest 를 쓴다.**
+						 * management.endpoints.web.base-path 를 바꾸면 문자열 매처는 조용히 어긋나고,
+						 * 어긋난 결과가 "아무도 안 막힘"이다(아래 anyRequest().permitAll() 로 떨어진다).
+						 * EndpointRequest 는 실제 매핑을 따라가므로 base-path 를 바꿔도 함께 움직인다.
+						 *
+						 * 노출하지 않은 엔드포인트(env·configprops·heapdump·threaddump)는
+						 * toAnyEndpoint() 에 **매치되지 않는다** — 매핑 자체가 없기 때문이다.
+						 * 그래서 ADMIN 이 /actuator/env 를 불러도 403 이 아니라 404 다. 이 차이가
+						 * "인가로 막았다"와 "애초에 없다"를 구분하는 지점이라 판정 항목에 넣었다.
+						 */
+						.requestMatchers(EndpointRequest.to(HealthEndpoint.class, InfoEndpoint.class)).permitAll()
+						.requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ADMIN")
 
 						/*
 						 * 계약 §8.5 는 이 경로를 "인증 필요"로 규정한다. **아래 GET /api/** permitAll 보다

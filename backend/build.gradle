@@ -29,6 +29,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 
+	// 관측. actuator 가 엔드포인트를, 그것이 끌고 오는 micrometer-core 가 MeterRegistry 를 준다.
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
 	// JWT 발급·검증. jjwt 는 api/impl/jackson 세 조각으로 나뉘어 있고, impl 과 jackson 은
 	// 런타임에만 필요하다. 컴파일 의존을 api 로 좁혀 두면 구현 클래스를 직접 참조하는
 	// 코드가 실수로 들어오는 것을 컴파일 단계에서 막을 수 있다.
