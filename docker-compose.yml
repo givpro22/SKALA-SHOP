@@ -70,7 +70,20 @@ services:
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:
-      # actuator를 넣지 않았으므로 실제 API로 확인한다.
+      # **`GET /api/products` 를 읽는다.** `/actuator/health` 는 78fd159 로 들어와 있고 익명 공개라
+      # 쓸 수 있다 — 쓸 게 없어서가 아니라 **안 쓰기로 정했다.**
+      #
+      # 두 경로가 확인하는 범위가 다르다. health 는 DataSource 커넥션 검증까지고(DB 가 죽으면
+      # 집계 status 가 DOWN 이 되므로 그건 이쪽도 잡는다), `/api/products` 는 시큐리티 필터 체인 →
+      # 컨트롤러 → JPA → 직렬화까지 **응답이 나오는 것**을 확인한다. 필터 체인이 공개 조회를
+      # 막거나 매핑·직렬화가 깨진 상태는 health 가 UP 인 채로 통과한다.
+      # 반대 방향도 있다 — health 의 diskSpace 지표는 트래픽을 정상으로 받는 상태에서도 DOWN 이
+      # 될 수 있고, 그러면 `depends_on: service_healthy` 로 묶인 frontend 까지 함께 막힌다.
+      #
+      # 비용은 문제가 되지 않는다. 20행 조회를 10초에 한 번 친다.
+      # 대가는 이 경로가 `GET /api/**` permitAll 에 **의존한다**는 것이다 — 인증 경계를 좁히면
+      # 여기가 401 로 조용히 깨진다. 그 경우가 전환을 다시 볼 시점이다
+      # (판단 근거와 전환 시 확인 절차: `_workspace/05_devops_deploy-notes.md` §헬스체크 경로 판단).
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/products"]
       interval: 10s
       timeout: 5s

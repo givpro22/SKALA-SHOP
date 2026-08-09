@@ -57,6 +57,9 @@ services:
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:
+      # 루트 compose 와 같은 경로다. `/actuator/health` 가 있는데도 실제 API 를 읽는 것은
+      # 의도된 선택이며, 근거는 그쪽 주석과 배포 노트 §헬스체크 경로 판단에 있다.
+      # **한쪽만 바꾸지 않는다** — 두 파일이 갈리면 로컬에서 검증한 조건이 배포본의 조건과 달라진다.
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/products"]
       interval: 10s
       timeout: 5s
