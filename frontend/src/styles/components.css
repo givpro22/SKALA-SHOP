@@ -986,11 +986,31 @@
  * 로그인은 페이지가 아니라 헤더에 있다. 조회가 공개인 앱에서 로그인 페이지로 먼저 보내면
  * 로그인 없이 볼 수 있는 화면까지 가려진다.
  */
+/*
+ * **`min-width: 0` 이 없으면 아래 `[data-logged-in]` 의 말줄임이 발동할 수 없다.**
+ *
+ * `.authbar` 도 `.app__head` 의 flex 항목이고, flex 항목의 기본 최소 폭은 `auto`(= 내용
+ * 크기)다. 그래서 헤더가 좁아져도 `.authbar` 자체가 줄지 않았고, 줄지 않는 부모는
+ * 자식에게 줄어들 폭을 나눠 주지 않는다 — 계정 이름의 `overflow: hidden; text-overflow:
+ * ellipsis` 가 세 라운드 내내 **선언만 되어 있고 한 번도 동작하지 않았다**(실측 183/183).
+ *
+ * 이 한 줄이 헤더에서 **유일하게 줄어들 수 있는 경로**다. 내비(`.app__head .tabs`)와
+ * 역할 배지(`[data-role]`)는 각각 `flex-shrink: 0` 으로 잠겨 있고, `.brand`·`.app__api`
+ * 는 `white-space: nowrap` 이라 자동 최소 폭이 곧 내용 폭이다. 그 상태에서 `.authbar`
+ * 까지 안 줄면 **행이 요구하는 폭이 어떤 뷰포트에서도 줄지 않아** 남는 양이 소멸하지
+ * 못하고 그대로 행 끝으로 밀린다. 1280px 에서 `로그아웃` 버튼의 36.6% 가 프레임 밖으로
+ * 나간 것이 그 결과다.
+ *
+ * 안쪽의 `로그아웃` 버튼은 따로 잠그지 않는다 — `.btn` 이 `white-space: nowrap` 이라
+ * 자동 최소 폭이 이미 글자 폭이고, 줄어드는 몫은 전부 계정 이름으로 간다.
+ * 실측으로 확인했다(라운드 28 게이트 5: 자연 54.77 / 보임 54.77, scroll/client 83/83).
+ */
 .authbar {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
   position: relative;
+  min-width: 0;
 }
 
 .authbar__who {
