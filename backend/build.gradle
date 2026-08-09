@@ -31,6 +31,10 @@ dependencies {
 
 	// 관측. actuator 가 엔드포인트를, 그것이 끌고 오는 micrometer-core 가 MeterRegistry 를 준다.
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	// shop.observability.RuleRejectionMetrics 의 @Aspect 용. aspectjweaver 는 spring-aspects 를
+	// 통해 이미 클래스패스에 올라와 있지만 그건 JPA 스타터의 부수 효과라 언제 사라져도 이상하지 않다.
+	// 쓰는 쪽에서 명시적으로 선언한다.
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
 
 	// JWT 발급·검증. jjwt 는 api/impl/jackson 세 조각으로 나뉘어 있고, impl 과 jackson 은
 	// 런타임에만 필요하다. 컴파일 의존을 api 로 좁혀 두면 구현 클래스를 직접 참조하는
