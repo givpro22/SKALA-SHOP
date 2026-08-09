@@ -22,6 +22,11 @@
   padding: var(--space-sm) var(--gutter);
   background: var(--color-canvas);
   border-bottom: 1px solid var(--color-hairline);
+  /*
+   * 인증 패널(`.authbar__panel`)의 기준 상자다. 좁은 폭에서 `.authbar` 를 기준으로 두면
+   * 패널이 뷰포트 밖으로 밀린다 — 자세한 근거는 responsive.css 의 599px 분기에 있다.
+   */
+  position: relative;
 }
 
 .app__head h1 {
