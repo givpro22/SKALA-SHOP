@@ -999,15 +999,29 @@
   letter-spacing: var(--ls-body-sm);
   font-weight: var(--weight-body-sm);
   white-space: nowrap;
-  /*
-   * 헤더가 좁아지면 **여기가 줄어든다.** 이메일은 끝이 잘려도 누구인지 읽히지만,
-   * 내비게이션 버튼이 잘리면 무엇을 누를 수 있는지가 사라진다(layout.css 의
-   * `.app__head .tabs` 주석 참조). `min-width: 0` 이 없으면 flex 항목의 기본
-   * 최소 폭이 내용 크기라 축소 자체가 일어나지 않는다.
-   */
+}
+
+/*
+ * 헤더가 좁아지면 **계정 이름이 줄어든다.** 내비게이션 버튼이 잘리면 무엇을 누를 수
+ * 있는지가 사라지지만, 이메일은 끝이 잘려도 누구인지 읽힌다(layout.css 의
+ * `.app__head .tabs` 주석 참조). `min-width: 0` 이 없으면 flex 항목의 기본 최소 폭이
+ * 내용 크기라 축소 자체가 일어나지 않는다.
+ *
+ * **`.authbar__who` 전체에 걸면 안 된다.** 이 클래스는 두 요소가 함께 쓴다 —
+ * 계정 이름(`[data-logged-in]`)과 역할·장바구니·포인트(`[data-role]`). 클래스에
+ * 걸었더니 줄어든 쪽이 후자였고, `SHOPPER · 장바구니 0 · 76,000P` 가
+ * `SHOPPER · 장바구니…` 로 잘렸다. **잘려도 되는 것과 잘리면 안 되는 것이
+ * 같은 클래스를 쓰고 있었다.**
+ */
+.authbar__who[data-logged-in] {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 역할·장바구니·포인트는 화면이 증명하는 값이다. 줄이지 않는다 */
+.authbar__who[data-role] {
+  flex-shrink: 0;
 }
 
 /*
