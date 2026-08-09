@@ -107,6 +107,16 @@
     letter-spacing: var(--ls-body-sm);
   }
 
+  /*
+   * layout.css 가 준 헤더-탭 사이 여백(16px)을 이 폭에서만 되돌린다.
+   * 그 여백은 넓은 폭에서 두 내비가 한 덩어리로 보이는 것을 푸는 것이 목적인데,
+   * 여기서는 헤더가 이미 여러 줄로 쌓여 그 문제가 없다. 반면 세로 예산은 빠듯하다 —
+   * `CART_STALE` 배너가 390×844 에서 815px 을 쓰고 여유가 29px 뿐이다(§9.5.4).
+   */
+  .app > .tabs {
+    margin-block-start: 0;
+  }
+
   /* 헤더가 4~5줄로 쌓이는 폭이다. 줄 간격 12 → 8 */
   .app__head {
     gap: var(--space-xs) var(--space-md);
